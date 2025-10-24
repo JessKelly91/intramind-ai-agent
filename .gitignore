@@ -200,6 +200,19 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.cursor/
+.cursor/*
+*.cursor
+
+# Claude
+.claude/
+.claude/*
+*.claude
+
+# GitHub
+.github/
+.github/*
+*.github
 
 # Marimo
 marimo/_static/
