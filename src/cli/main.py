@@ -208,8 +208,12 @@ def info() -> None:
     default=None,
     help="API Gateway URL (default: from settings)",
 )
-async def health(url: str | None) -> None:
+def health(url: str | None) -> None:
     """Check API Gateway health status."""
+    asyncio.run(_health(url))
+
+
+async def _health(url: str | None) -> None:
     from tools.api_client import APIGatewayClient
 
     console.print("[bold]Checking API Gateway health...[/bold]\n")
@@ -218,11 +222,11 @@ async def health(url: str | None) -> None:
         async with APIGatewayClient(base_url=url) as client:
             response = await client.health_check()
 
-        console.print(Panel("[green]✓ API Gateway is healthy[/green]", border_style="green"))
+        console.print(Panel("API Gateway is healthy", border_style="green"))
         console.print(f"Response: {response}")
 
     except Exception as e:
-        console.print(Panel(f"[red]✗ Health check failed: {e}[/red]", border_style="red"))
+        console.print(Panel(f"Health check failed: {e}", border_style="red"))
         sys.exit(1)
 
 

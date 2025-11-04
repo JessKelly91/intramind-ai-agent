@@ -4,6 +4,7 @@ from .agent_tools import (
     AGENT_TOOLS,
     create_collection,
     get_document,
+    get_api_client,
     insert_document,
     list_collections,
     search_documents,
@@ -13,6 +14,7 @@ from .api_client import APIGatewayClient
 __all__ = [
     "APIGatewayClient",
     "AGENT_TOOLS",
+    "get_api_client",
     "search_documents",
     "insert_document",
     "get_document",

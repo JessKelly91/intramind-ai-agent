@@ -48,15 +48,14 @@ async def search_documents(
 
         return {
             "success": True,
-            "query": response.query,
-            "collection": response.collection_name,
-            "total_results": response.total_results,
+            "total_results": response.total_count,
             "results": [
                 {
-                    "id": result.id,
+                    "id": result.document_id,
                     "content": result.content,
                     "metadata": result.metadata,
                     "score": result.score,
+                    "collection": result.collection_name,
                 }
                 for result in response.results
             ],

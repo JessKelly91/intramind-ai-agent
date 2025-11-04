@@ -93,7 +93,7 @@ async def simple_search(state: SearchWorkflowState) -> SearchWorkflowState:
 
         results = [
             {
-                "id": result.id,
+                "id": result.document_id,
                 "content": result.content,
                 "metadata": result.metadata,
                 "score": result.score,
@@ -179,11 +179,11 @@ async def complex_search(state: SearchWorkflowState) -> SearchWorkflowState:
 
             for result in response.results:
                 # Deduplicate by ID
-                if result.id not in seen_ids:
-                    seen_ids.add(result.id)
+                if result.document_id not in seen_ids:
+                    seen_ids.add(result.document_id)
                     all_results.append(
                         {
-                            "id": result.id,
+                            "id": result.document_id,
                             "content": result.content,
                             "metadata": result.metadata,
                             "score": result.score,

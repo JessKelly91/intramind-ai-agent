@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any
+import uuid
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -154,25 +155,26 @@ class APIGatewayClient:
     ) -> DocumentResponse:
         """Insert a document into a collection.
 
-        Args:
-            collection_name: Target collection
-            content: Document content
-            metadata: Optional metadata
-            document_id: Optional document ID
-
-        Returns:
-            Inserted document details
-
-        Raises:
-            httpx.HTTPStatusError: If request fails
+        The API Gateway expects fields: DocumentId, CollectionName, Content, Metadata.
         """
         logger.info(f"Inserting document into {collection_name}")
-        request = DocumentInsert(
-            collection_name=collection_name, content=content, metadata=metadata, id=document_id
-        )
-        response = await self.client.post("/v1/documents", json=request.model_dump(exclude_none=True))
+
+        doc_id = document_id or str(uuid.uuid4())
+        payload = {
+            "DocumentId": doc_id,
+            "CollectionName": collection_name,
+            "Content": content,
+            "Metadata": metadata or {},
+        }
+
+        response = await self.client.post("/v1/documents", json=payload)
         response.raise_for_status()
-        return DocumentResponse(**response.json())
+        data = response.json()
+        return DocumentResponse(
+            id=data.get("documentId") or data.get("id") or doc_id,
+            content=data.get("content", ""),
+            metadata=data.get("metadata"),
+        )
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def insert_documents_batch(
@@ -293,8 +295,8 @@ class APIGatewayClient:
         """
         logger.info(f"Searching {collection_name} for: {query[:50]}...")
         request = SearchRequest(
-            collection_name=collection_name, query=query, limit=limit, filter=filter
+            collection_name=collection_name, query=query, limit=limit, metadata_filters=filter
         )
-        response = await self.client.post("/v1/search", json=request.model_dump(exclude_none=True))
+        response = await self.client.post("/v1/search", json=request.model_dump(by_alias=True, exclude_none=True))
         response.raise_for_status()
         return SearchResponse(**response.json())
