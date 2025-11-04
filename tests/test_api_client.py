@@ -36,15 +36,16 @@ async def test_search(api_client):
         mock_response.json.return_value = {
             "results": [
                 {
-                    "id": "doc1",
+                    "documentId": "doc1",
                     "content": "Test content",
                     "metadata": {"title": "Test"},
                     "score": 0.95,
+                    "collectionName": "test_collection",
                 }
             ],
             "query": "test query",
-            "collection_name": "test_collection",
-            "total_results": 1,
+            "collectionName": "test_collection",
+            "totalCount": 1,
         }
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
@@ -55,8 +56,9 @@ async def test_search(api_client):
 
         assert isinstance(result, SearchResponse)
         assert len(result.results) == 1
-        assert result.results[0].id == "doc1"
-        assert result.query == "test query"
+        assert result.results[0].document_id == "doc1"
+        assert result.results[0].content == "Test content"
+        assert result.total_count == 1
 
 
 @pytest.mark.asyncio
