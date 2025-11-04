@@ -250,7 +250,7 @@ async def test_stream_search_yields_updates():
         },
     ]
     
-    async def mock_astream(state):
+    async def mock_astream(state, **kwargs):
         for event in mock_stream_events:
             yield event
     
@@ -310,7 +310,7 @@ async def test_stream_search_complex_query():
         },
     ]
     
-    async def mock_astream(state):
+    async def mock_astream(state, **kwargs):
         for event in mock_stream_events:
             yield event
     
@@ -330,7 +330,7 @@ async def test_stream_search_handles_errors():
     """Test that stream_search handles errors gracefully."""
     agent = IntraMindAgent()
     
-    async def mock_astream_error(state):
+    async def mock_astream_error(state, **kwargs):
         raise Exception("Streaming failed")
         yield  # Make it a generator
     
@@ -361,7 +361,7 @@ async def test_stream_search_with_custom_parameters():
         },
     ]
     
-    async def mock_astream(state):
+    async def mock_astream(state, **kwargs):
         # Verify state was initialized with custom parameters
         assert state["document_metadata"]["collection_name"] == "custom_col"
         assert state["num_results"] == 20
@@ -410,7 +410,7 @@ async def test_stream_search_no_results():
         },
     ]
     
-    async def mock_astream(state):
+    async def mock_astream(state, **kwargs):
         for event in mock_stream_events:
             yield event
     
@@ -443,7 +443,7 @@ async def test_stream_search_yields_correct_format():
         },
     ]
     
-    async def mock_astream(state):
+    async def mock_astream(state, **kwargs):
         for event in mock_stream_events:
             yield event
     

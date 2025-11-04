@@ -43,6 +43,14 @@ def print_config_info() -> None:
     table.add_row("Router LLM", settings.router_llm_provider)
     table.add_row("Default Collection", settings.default_collection)
     table.add_row("Log Level", settings.log_level)
+    
+    # Conversation memory info
+    memory_status = "✅ Enabled" if settings.enable_conversation_memory else "❌ Disabled"
+    table.add_row("Conversation Memory", memory_status)
+    if settings.enable_conversation_memory:
+        table.add_row("  Max History", f"{settings.max_conversation_history} turns")
+        smart_context = "✅ Enabled" if settings.smart_context_selection else "❌ Disabled"
+        table.add_row("  Smart Context", smart_context)
 
     console.print(table)
     console.print()
@@ -88,7 +96,18 @@ def search(query: str | None, collection: str | None, limit: int, stream: bool) 
     # Interactive mode if no query provided
     if not query:
         console.print("[yellow]Interactive Search Mode[/yellow]")
-        console.print("Type your query (or 'exit' to quit)\n")
+        
+        # Show conversation status if enabled
+        if settings.enable_conversation_memory:
+            console.print("[green]💬 Conversation Memory: ENABLED[/green]")
+            console.print("[dim]Your queries will be remembered in context[/dim]")
+        
+        console.print("Type your query (or 'exit' to quit, 'clear' to reset conversation, 'new' to start new thread)\n")
+
+        # Create agent instance once for the entire interactive session
+        agent = IntraMindAgent()
+        if agent.is_conversation_enabled():
+            console.print(f"[dim]Thread ID: {agent.get_thread_id()}[/dim]\n")
 
         while True:
             query = Prompt.ask("[bold cyan]Search")
@@ -96,16 +115,33 @@ def search(query: str | None, collection: str | None, limit: int, stream: bool) 
             if query.lower() in ["exit", "quit", "q"]:
                 console.print("[yellow]Goodbye![/yellow]")
                 break
+            elif query.lower() == "clear":
+                # Clear conversation
+                if agent.is_conversation_enabled():
+                    asyncio.run(agent.clear_conversation())
+                    console.print("[green]✓ Conversation cleared[/green]\n")
+                else:
+                    console.print("[yellow]Conversation memory not enabled[/yellow]\n")
+                continue
+            elif query.lower() == "new":
+                # Start new conversation
+                if agent.is_conversation_enabled():
+                    new_thread = agent.new_conversation()
+                    console.print(f"[green]✓ Started new conversation[/green]")
+                    console.print(f"[dim]Thread ID: {new_thread}[/dim]\n")
+                else:
+                    console.print("[yellow]Conversation memory not enabled[/yellow]\n")
+                continue
 
-            asyncio.run(_execute_search(query, collection_name, limit, stream))
+            asyncio.run(_execute_search_with_agent(agent, query, collection_name, limit, stream))
             console.print()
     else:
-        # Single query mode
+        # Single query mode - create new agent
         asyncio.run(_execute_search(query, collection_name, limit, stream))
 
 
 async def _execute_search(query: str, collection: str, limit: int, stream: bool) -> None:
-    """Execute a search query.
+    """Execute a search query with a new agent instance.
 
     Args:
         query: Search query
@@ -114,6 +150,21 @@ async def _execute_search(query: str, collection: str, limit: int, stream: bool)
         stream: Whether to stream results
     """
     agent = IntraMindAgent()
+    await _execute_search_with_agent(agent, query, collection, limit, stream)
+
+
+async def _execute_search_with_agent(
+    agent: IntraMindAgent, query: str, collection: str, limit: int, stream: bool
+) -> None:
+    """Execute a search query with an existing agent instance.
+
+    Args:
+        agent: Existing agent instance
+        query: Search query
+        collection: Collection name
+        limit: Max results
+        stream: Whether to stream results
+    """
 
     if stream:
         # Streaming mode - show progress
@@ -361,6 +412,79 @@ async def _health(url: str | None) -> None:
     except Exception as e:
         console.print(Panel(f"Health check failed: {e}", border_style="red"))
         sys.exit(1)
+
+
+@cli.command()
+@click.option(
+    "--thread-id",
+    "-t",
+    help="Specific thread ID to manage (default: creates new)",
+)
+@click.option(
+    "--clear",
+    is_flag=True,
+    help="Clear conversation history for the thread",
+)
+@click.option(
+    "--history",
+    is_flag=True,
+    help="Show conversation history",
+)
+def conversation(thread_id: str | None, clear: bool, history: bool) -> None:
+    """Manage conversation threads and memory."""
+    if not settings.enable_conversation_memory:
+        console.print("[red]❌ Conversation memory is not enabled[/red]")
+        console.print("[yellow]Enable it in .env: ENABLE_CONVERSATION_MEMORY=true[/yellow]")
+        return
+
+    print_banner()
+    asyncio.run(_manage_conversation(thread_id, clear, history))
+
+
+async def _manage_conversation(thread_id: str | None, clear: bool, history: bool) -> None:
+    """Manage conversation operations."""
+    agent = IntraMindAgent(thread_id=thread_id)
+
+    console.print(f"[cyan]Thread ID:[/cyan] {agent.get_thread_id()}\n")
+
+    if clear:
+        # Clear conversation
+        success = await agent.clear_conversation()
+        if success:
+            console.print("[green]✓ Conversation history cleared[/green]")
+        else:
+            console.print("[red]✗ Failed to clear conversation[/red]")
+
+    elif history:
+        # Show conversation history
+        messages = await agent.get_conversation_history()
+        
+        if not messages:
+            console.print("[yellow]No conversation history found[/yellow]")
+            return
+
+        console.print(f"[cyan]Conversation History ({len(messages)} messages)[/cyan]\n")
+
+        for i, msg in enumerate(messages, 1):
+            role = "User" if hasattr(msg, "type") and msg.type == "human" else "Assistant"
+            content = msg.content if hasattr(msg, "content") else str(msg)
+            
+            style = "bold cyan" if role == "User" else "green"
+            console.print(f"[{style}]{role}:[/{style}] {content[:200]}...")
+            
+            if i < len(messages):
+                console.print()
+
+    else:
+        # Show conversation info
+        console.print("[green]✓ Conversation memory enabled[/green]")
+        console.print(f"[dim]Max history: {settings.max_conversation_history} turns[/dim]")
+        console.print(f"[dim]Smart context: {'Enabled' if settings.smart_context_selection else 'Disabled'}[/dim]")
+        
+        messages = await agent.get_conversation_history()
+        console.print(f"\n[cyan]Messages in thread:[/cyan] {len(messages)}")
+        
+        console.print("\n[yellow]💡 Use --clear to reset, --history to view messages[/yellow]")
 
 
 def main() -> None:

@@ -1,5 +1,7 @@
 # Core AI/ML frameworks
 langgraph>=0.2.0
+langgraph-checkpoint-sqlite>=1.0.0  # Conversation memory/persistence
+aiosqlite>=0.20.0  # Async SQLite for LangGraph checkpointing
 langchain>=0.3.0
 langchain-community>=0.3.0
 langchain-openai>=0.2.0

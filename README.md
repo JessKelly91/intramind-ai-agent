@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2%2B-green)](https://langchain-ai.github.io/langgraph/)
 [![Coverage](https://img.shields.io/badge/Coverage-67%25-brightgreen)](htmlcov/index.html)
-[![Tests](https://img.shields.io/badge/Tests-55%20passing-success)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-112%20passing-success)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 🎯 Overview
@@ -16,6 +16,7 @@ The IntraMind AI Agent is an intelligent document search system built with **Lan
 
 - **🤖 LangGraph State Machine**: Predictable, debuggable AI workflows
 - **🔍 Smart Query Routing**: Automatic classification of simple vs complex queries
+- **💬 Conversation Memory**: Context-aware interactions with smart cost optimization
 - **📊 Multi-Query Expansion**: Complex queries are expanded into multiple searches
 - **✨ Result Synthesis**: AI-powered aggregation and summarization of search results
 - **💰 Cost-Effective Hybrid LLM**: Local models for routing, API models for synthesis
@@ -290,6 +291,18 @@ DEFAULT_COLLECTION=intramind_documents
 SEARCH_LIMIT=10              # Default result limit
 ```
 
+### Conversation Memory Settings
+
+```env
+# Enable context-aware conversations (recommended)
+ENABLE_CONVERSATION_MEMORY=true
+MAX_CONVERSATION_HISTORY=5          # Max turns in context (cost optimization)
+SMART_CONTEXT_SELECTION=true        # Only use history for complex queries (~20% cost increase)
+CHECKPOINT_STORAGE_PATH=./data/checkpoints.db
+```
+
+**Learn more**: See [CONVERSATION_MEMORY.md](docs/CONVERSATION_MEMORY.md) for detailed usage and best practices.
+
 ## 🛡️ Error Handling
 
 ### Graceful Error Recovery
@@ -542,7 +555,7 @@ async def main():
 
 ### Test Suite Overview
 
-The project includes **94 comprehensive tests** covering all major components:
+The project includes **112 comprehensive tests** covering all major components:
 
 | Test File | Tests | Coverage | Focus |
 |-----------|-------|----------|-------|
@@ -550,10 +563,11 @@ The project includes **94 comprehensive tests** covering all major components:
 | `test_ingestion_workflow.py` | 32 | Validation, parsing, chunking, storage | Document ingestion pipeline |
 | `test_agent.py` | 13 | Agent interface, streaming, errors | IntraMindAgent API |
 | `test_agent_tools.py` | 18 | All 5 LangChain tools | Tool implementations |
+| `test_conversation_memory.py` | 18 | Checkpointing, context handling | Conversation memory feature |
 | `test_e2e_ingestion_search.py` | 7 | End-to-end integration | Full system validation |
 | `test_api_client.py` | 3 | HTTP client basics | API Gateway client |
 | `test_min_score_filtering.py` | 3 | Score threshold filtering | Search quality feature |
-| **Total** | **94** | **67% coverage** | **All passing ✅** |
+| **Total** | **112** | **67% coverage** | **All passing ✅** |
 
 ### Testing Patterns
 

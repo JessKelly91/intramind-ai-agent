@@ -1,14 +1,17 @@
 """Main agent interface for IntraMind."""
 
 import logging
+import uuid
 from typing import Any, AsyncIterator
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
+from config import settings
 from models.state import IngestionWorkflowState, SearchWorkflowState
+from utils.checkpoint import get_checkpointer
 from utils.metrics import track_ingestion, track_query
 from workflows.ingestion_workflow import ingestion_workflow
-from workflows.search_workflow import search_workflow
+from workflows.search_workflow import create_search_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +19,34 @@ logger = logging.getLogger(__name__)
 class IntraMindAgent:
     """High-level interface for IntraMind AI Agent."""
 
-    def __init__(self):
-        """Initialize the IntraMind agent."""
-        self.search_workflow = search_workflow
+    def __init__(self, thread_id: str | None = None):
+        """Initialize the IntraMind agent.
+        
+        Args:
+            thread_id: Optional conversation thread ID. If None, a new thread is created.
+                      Set to False to disable conversation memory for this instance.
+        """
         self.ingestion_workflow = ingestion_workflow
-        logger.info("IntraMind agent initialized")
+        
+        # Conversation memory setup
+        if thread_id is False:
+            # Explicitly disable memory for this instance
+            self.thread_id = None
+            self.checkpointer = None
+            self.search_workflow = create_search_workflow(checkpointer=None)
+            logger.info("IntraMind agent initialized (memory disabled)")
+        else:
+            # Use provided thread_id or create new one
+            self.thread_id = thread_id or str(uuid.uuid4())
+            self.checkpointer = get_checkpointer() if settings.enable_conversation_memory else None
+            self.search_workflow = create_search_workflow(checkpointer=self.checkpointer)
+            
+            if self.checkpointer:
+                logger.info(f"IntraMind agent initialized with conversation memory (thread: {self.thread_id})")
+            else:
+                logger.info("IntraMind agent initialized (memory not configured)")
+        
+        self._conversation_enabled = self.checkpointer is not None
 
     @track_query
     async def search(
@@ -47,6 +73,8 @@ class IntraMindAgent:
         initial_state: SearchWorkflowState = {
             "messages": [HumanMessage(content=query)],
             "user_query": query,
+            "thread_id": self.thread_id,
+            "use_conversation_context": False,  # Will be set by classify_query
             "current_step": "start",
             "next_step": None,
             "workflow_complete": False,
@@ -68,9 +96,10 @@ class IntraMindAgent:
             "aggregated_results": None,
         }
 
-        # Execute workflow
+        # Execute workflow with thread config for conversation memory
         try:
-            result = await self.search_workflow.ainvoke(initial_state)
+            config = {"configurable": {"thread_id": self.thread_id}} if self.thread_id else {}
+            result = await self.search_workflow.ainvoke(initial_state, config=config)
 
             return {
                 "success": True,
@@ -80,6 +109,7 @@ class IntraMindAgent:
                 "results": result.get("search_results", []),
                 "complexity": result.get("query_complexity"),
                 "expanded_queries": result.get("expanded_queries"),
+                "thread_id": self.thread_id,
             }
 
         except Exception as e:
@@ -127,6 +157,8 @@ class IntraMindAgent:
         initial_state: SearchWorkflowState = {
             "messages": [HumanMessage(content=query)],
             "user_query": query,
+            "thread_id": self.thread_id,
+            "use_conversation_context": False,  # Will be set by classify_query
             "current_step": "start",
             "next_step": None,
             "workflow_complete": False,
@@ -148,9 +180,10 @@ class IntraMindAgent:
             "aggregated_results": None,
         }
 
-        # Stream workflow execution
+        # Stream workflow execution with thread config
         try:
-            async for event in self.search_workflow.astream(initial_state):
+            config = {"configurable": {"thread_id": self.thread_id}} if self.thread_id else {}
+            async for event in self.search_workflow.astream(initial_state, config=config):
                 # Extract the node name and state
                 for node_name, node_state in event.items():
                     # Track complexity and expanded queries for metrics
@@ -327,3 +360,74 @@ class IntraMindAgent:
                 "file_path": file_path,
                 "error": str(e),
             }
+
+    # Conversation Memory Management Methods
+
+    def is_conversation_enabled(self) -> bool:
+        """Check if conversation memory is enabled for this agent instance.
+        
+        Returns:
+            True if conversation memory is enabled
+        """
+        return self._conversation_enabled
+
+    def get_thread_id(self) -> str | None:
+        """Get the current conversation thread ID.
+        
+        Returns:
+            Thread ID string or None if memory is disabled
+        """
+        return self.thread_id
+
+    async def clear_conversation(self) -> bool:
+        """Clear the conversation history for this agent's thread.
+        
+        Returns:
+            True if cleared successfully, False if memory is disabled
+        """
+        if not self._conversation_enabled or not self.thread_id:
+            logger.warning("Cannot clear conversation: memory not enabled")
+            return False
+
+        try:
+            from utils.checkpoint import checkpoint_manager
+            success = await checkpoint_manager.clear_conversation(self.thread_id)
+            if success:
+                logger.info(f"Cleared conversation history for thread: {self.thread_id}")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to clear conversation: {e}")
+            return False
+
+    async def get_conversation_history(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Get conversation history for this agent's thread.
+        
+        Args:
+            limit: Maximum number of messages to retrieve (None = all)
+            
+        Returns:
+            List of conversation messages
+        """
+        if not self._conversation_enabled or not self.thread_id:
+            return []
+
+        try:
+            from utils.checkpoint import checkpoint_manager
+            return await checkpoint_manager.get_conversation_history(self.thread_id, limit)
+        except Exception as e:
+            logger.error(f"Failed to retrieve conversation history: {e}")
+            return []
+
+    def new_conversation(self) -> str:
+        """Start a new conversation thread.
+        
+        Returns:
+            New thread ID
+        """
+        if not self._conversation_enabled:
+            logger.warning("Cannot create new conversation: memory not enabled")
+            return None
+
+        self.thread_id = str(uuid.uuid4())
+        logger.info(f"Started new conversation thread: {self.thread_id}")
+        return self.thread_id

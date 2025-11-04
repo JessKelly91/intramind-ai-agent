@@ -1,17 +1,23 @@
 """Configuration management for IntraMind AI Agent."""
 
+from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Load .env file from project root before defining Settings
+_env_path = Path(__file__).parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path, override=True)
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
@@ -108,6 +114,24 @@ class Settings(BaseSettings):
     search_limit: int = Field(
         default=10,
         description="Default number of search results to return",
+    )
+
+    # Conversation Memory Settings
+    enable_conversation_memory: bool = Field(
+        default=True,
+        description="Enable conversation memory/context across queries",
+    )
+    max_conversation_history: int = Field(
+        default=5,
+        description="Maximum number of conversation turns to keep in context (cost optimization)",
+    )
+    smart_context_selection: bool = Field(
+        default=True,
+        description="Only include conversation history for complex queries (cost optimization)",
+    )
+    checkpoint_storage_path: str = Field(
+        default="./data/checkpoints.db",
+        description="Path to SQLite database for conversation checkpoints",
     )
 
     def get_primary_llm_config(self) -> dict:

@@ -14,6 +14,10 @@ class AgentState(TypedDict):
     # User input
     user_query: str
 
+    # Conversation tracking
+    thread_id: str | None  # Unique identifier for conversation thread
+    use_conversation_context: bool  # Whether to include conversation history in synthesis
+
     # Workflow control
     current_step: str
     next_step: str | None

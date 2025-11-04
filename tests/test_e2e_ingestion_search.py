@@ -38,8 +38,11 @@ def test_collection_name() -> str:
 
 @pytest.fixture
 def agent() -> IntraMindAgent:
-    """Create an agent instance for testing."""
-    return IntraMindAgent()
+    """Create an agent instance for testing.
+    
+    Note: Conversation memory is disabled for E2E tests to avoid event loop issues.
+    """
+    return IntraMindAgent(thread_id=False)
 
 
 @pytest.fixture

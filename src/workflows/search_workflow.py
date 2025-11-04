@@ -6,6 +6,7 @@ from typing import Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
+from config import settings
 from models.state import SearchWorkflowState
 from tools import get_api_client
 from utils.llm import get_primary_llm, get_router_llm
@@ -59,10 +60,20 @@ async def classify_query(state: SearchWorkflowState) -> SearchWorkflowState:
 
     logger.info(f"Query classified as: {complexity}")
 
+    # Determine if conversation context should be used (smart cost optimization)
+    use_context = state.get("use_conversation_context", False)
+    if settings.smart_context_selection:
+        # Only use conversation history for complex queries to save costs
+        use_context = complexity == "complex"
+    elif settings.enable_conversation_memory:
+        # If smart selection is disabled but memory is enabled, always use context
+        use_context = True
+
     return {
         **state,
         "current_step": "classify_query",
         "query_complexity": complexity,
+        "use_conversation_context": use_context,
         "next_step": "simple_search" if complexity == "simple" else "complex_search",
     }
 
@@ -247,18 +258,34 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
 
     context = "\n".join(context_parts)
 
-    # Synthesis prompt
+    # Build conversation messages
+    messages = []
+    
+    # Add system prompt
     system_prompt = """You are a helpful assistant that answers questions based on document search results.
     Use the provided documents to answer the user's question.
     Be concise and accurate. If the documents don't contain enough information, say so.
     Mention which document numbers support your answer (e.g., "According to Documents 1 and 2...")."""
-
-    messages = [
-        SystemMessage(content=system_prompt),
+    messages.append(SystemMessage(content=system_prompt))
+    
+    # Include conversation history if enabled (smart cost optimization)
+    use_context = state.get("use_conversation_context", False)
+    if use_context and settings.enable_conversation_memory:
+        # Get recent conversation history (excluding current query)
+        history_messages = state.get("messages", [])[:-1]  # Exclude current HumanMessage
+        max_history = settings.max_conversation_history * 2  # 2 messages per turn (user + assistant)
+        
+        if history_messages:
+            recent_history = history_messages[-max_history:] if len(history_messages) > max_history else history_messages
+            messages.extend(recent_history)
+            logger.info(f"Including {len(recent_history)} messages from conversation history")
+    
+    # Add current query with document context
+    messages.append(
         HumanMessage(
             content=f"Question: {query}\n\nRelevant Documents:\n{context}\n\nPlease provide a comprehensive answer."
-        ),
-    ]
+        )
+    )
 
     response = await primary_llm.ainvoke(messages)
     answer = response.content
@@ -326,9 +353,12 @@ def route_after_search(state: SearchWorkflowState) -> Literal["synthesize_result
 
 
 # Build the workflow graph
-def create_search_workflow() -> StateGraph:
+def create_search_workflow(checkpointer=None):
     """Create and compile the document search workflow.
-
+    
+    Args:
+        checkpointer: Optional checkpointer for conversation memory persistence
+        
     Returns:
         Compiled LangGraph workflow
     """
@@ -352,9 +382,10 @@ def create_search_workflow() -> StateGraph:
     workflow.add_edge("synthesize_results", END)
     workflow.add_edge("handle_error", END)
 
-    # Compile and return
-    return workflow.compile()
+    # Compile with optional checkpointer
+    return workflow.compile(checkpointer=checkpointer)
 
 
-# Export compiled workflow
+# Export compiled workflow (without checkpointer for backwards compatibility)
+# Use create_search_workflow() with checkpointer for conversation memory
 search_workflow = create_search_workflow()
