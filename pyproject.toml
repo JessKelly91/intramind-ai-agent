@@ -95,3 +95,6 @@ disallow_untyped_defs = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (require all services running)"
+]

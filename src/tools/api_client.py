@@ -11,7 +11,6 @@ from config import settings
 from models.api import (
     CollectionCreate,
     CollectionResponse,
-    DocumentBatchInsert,
     DocumentInsert,
     DocumentResponse,
     DocumentUpdate,
@@ -184,7 +183,7 @@ class APIGatewayClient:
 
         Args:
             collection_name: Target collection
-            documents: List of documents to insert
+            documents: List of documents to insert (each should have id, content, metadata)
 
         Returns:
             Batch insertion results
@@ -193,10 +192,35 @@ class APIGatewayClient:
             httpx.HTTPStatusError: If request fails
         """
         logger.info(f"Batch inserting {len(documents)} documents into {collection_name}")
-        request = DocumentBatchInsert(collection_name=collection_name, documents=documents)
-        response = await self.client.post("/v1/documents/batch", json=request.model_dump())
+        
+        # API Gateway expects array of InsertDocumentRequest objects with PascalCase
+        # Each document should have: DocumentId, CollectionName, Content, Metadata
+        batch_requests = []
+        for doc in documents:
+            # Convert metadata dict values to strings for C# compatibility
+            metadata = doc.get("metadata", {})
+            metadata_str = {k: str(v) for k, v in metadata.items()} if metadata else None
+            
+            batch_requests.append({
+                "DocumentId": doc.get("id", doc.get("document_id", "")),
+                "CollectionName": collection_name,
+                "Content": doc.get("content", ""),
+                "Metadata": metadata_str
+            })
+        
+        response = await self.client.post("/v1/documents/batch", json=batch_requests)
         response.raise_for_status()
-        return response.json()
+        
+        # API Gateway returns list of DocumentResponse objects
+        # Extract the IDs and return in expected format
+        results = response.json()
+        document_ids = [doc.get("documentId") for doc in results]
+        
+        return {
+            "ids": document_ids,
+            "success": True,
+            "total_inserted": len(document_ids)
+        }
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def get_document(self, document_id: str, collection_name: str) -> DocumentResponse:

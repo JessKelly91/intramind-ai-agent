@@ -89,6 +89,7 @@ async def simple_search(state: SearchWorkflowState) -> SearchWorkflowState:
             ),
             query=query,
             limit=state.get("num_results", 10),
+            min_score=state.get("min_score", 0.0),
         )
 
         results = [
@@ -175,6 +176,7 @@ async def complex_search(state: SearchWorkflowState) -> SearchWorkflowState:
                 ),
                 query=expanded_query,
                 limit=5,  # Fewer per query since we're doing multiple
+                min_score=state.get("min_score", 0.0),
             )
 
             for result in response.results:

@@ -3,7 +3,6 @@
 from .api import (
     CollectionCreate,
     CollectionResponse,
-    DocumentBatchInsert,
     DocumentInsert,
     DocumentResponse,
     DocumentUpdate,
@@ -24,7 +23,6 @@ __all__ = [
     "CollectionCreate",
     "CollectionResponse",
     "DocumentInsert",
-    "DocumentBatchInsert",
     "DocumentResponse",
     "DocumentUpdate",
     "SearchRequest",

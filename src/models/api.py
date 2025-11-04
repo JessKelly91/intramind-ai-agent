@@ -41,13 +41,6 @@ class DocumentInsert(BaseModel):
     id: str | None = Field(None, description="Optional document ID")
 
 
-class DocumentBatchInsert(BaseModel):
-    """Request model for batch inserting documents."""
-
-    collection_name: str = Field(..., description="Target collection name")
-    documents: list[dict[str, Any]] = Field(..., description="List of documents to insert")
-
-
 class DocumentResponse(BaseModel):
     """Response model for document operations."""
 

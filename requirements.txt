@@ -24,12 +24,15 @@ rich>=13.0.0
 prompt-toolkit>=3.0.0
 
 # Multimodal Document Processing
-PyPDF2>=3.0.0
+pypdf>=3.17.0  # Modern PDF parsing (replaces PyPDF2)
 pdfplumber>=0.11.0
+python-docx>=1.1.0  # Word document parsing
 pytesseract>=0.3.10
 python-pptx>=1.0.0
 Pillow>=10.0.0
 python-magic-bin>=0.4.14  # File type detection (Windows compatible)
+chardet>=5.2.0  # Encoding detection for text files
+langchain-text-splitters>=0.2.0  # Advanced text chunking
 
 # Utilities
 tenacity>=8.0.0  # Retry logic

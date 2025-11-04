@@ -2,19 +2,20 @@
 
 This guide outlines the recommended path to complete your AI agent and make it portfolio-ready.
 
-## 🎯 Current Status (Updated: November 4, 2025 - 11:30 AM)
+## 🎯 Current Status (Updated: November 4, 2025 - 12:24 PM)
 
 **Week 1: COMPLETE ✅🎉** - Full end-to-end system working!
-**Week 2: COMPLETE ✅🎉** - Comprehensive test suite implemented!
+**Week 2: IN PROGRESS 🚧** - 4/5 core enhancements complete! (80% done)
 
 ### 🎊 Latest Achievement
-**Comprehensive Test Suite** - 55 tests covering all major components!
-- ✅ 18 tests for search workflow (unit + integration with mocks)
-- ✅ 13 tests for agent interface (search & streaming)
-- ✅ 18 tests for LangChain tools (all 5 tools covered)
-- ✅ 3 tests for API client
-- ✅ 3 integration tests for min_score feature
-- All 55 tests passing in ~4 seconds ✅
+**End-to-End Integration Tests** - Complete system validation!
+- ✅ 7 comprehensive integration tests (all passing)
+- ✅ Full workflow testing: ingest → parse → chunk → search → retrieve
+- ✅ Tests simple queries, complex queries, multi-document scenarios
+- ✅ Score filtering, edge cases, and performance validation
+- ✅ Proper test isolation with unique collection names
+- ✅ Complete documentation and troubleshooting guides
+- ✅ Total test count: 94 tests (87 unit + 7 integration) ✅
 
 ### ✅ Completed
 - All services started and running end-to-end
@@ -32,19 +33,26 @@ This guide outlines the recommended path to complete your AI agent and make it p
   - Fixed metadata retrieval bug (API Gateway now requests metadata)
   - Fixed score extraction (prioritize `certainty` over `score` field)
   - Comprehensive test suite with 3 passing tests
-- **✅ Comprehensive Test Suite (55 tests)** - Production-ready test coverage
+- **✅ Comprehensive Test Suite (87 tests total)** - Production-ready test coverage
   - `test_search_workflow.py` - 18 tests for LangGraph workflow (nodes, routing, integration)
   - `test_agent.py` - 13 tests for IntraMindAgent (search, streaming, error handling)
   - `test_agent_tools.py` - 18 tests for all LangChain tools
   - `test_api_client.py` - 3 tests for API client basics
   - `test_min_score_filtering.py` - 3 integration tests
+  - `test_ingestion_workflow.py` - 32 tests for document ingestion (NEW!)
   - All tests use proper mocking (run without services)
-  - Fast execution (~4 seconds for full suite)
+  - Fast execution (~6 seconds for full suite)
+- **✅ Document Ingestion Workflow** - Production-ready document processing
+  - Advanced file parsing: PDF, DOCX, PPTX, TXT, MD, images
+  - Sophisticated chunking with semantic boundary preservation
+  - Conditional error routing with robust error handling
+  - Rich metadata extraction throughout pipeline
 
 ### 🔄 In Progress
 - Nothing currently
 
 ### ⏳ Not Started
+- Week 2 (Remaining): Architecture Diagrams
 - Week 3: Portfolio Preparation
 
 ---
@@ -286,7 +294,7 @@ but this does not directly translate to increased revenue projections.
 
 ---
 
-## 🚀 Core Enhancements (Week 2) - ✅ COMPLETE
+## 🚀 Core Enhancements (Week 2) - 🚧 IN PROGRESS (3/5 Complete)
 
 ### 1. ✅ Search Quality Improvements (COMPLETED)
 
@@ -400,156 +408,79 @@ pytest tests/test_search_workflow.py -v  # Specific file
 
 **Goal**: Automate document processing and storage
 
-Create `src/workflows/ingestion_workflow.py`:
+**Status**: ✅ **COMPLETE** - Production-ready implementation with 32 tests passing
 
+#### What Was Implemented:
+
+**Created `src/workflows/ingestion_workflow.py` (597 lines)**:
+- ✅ **Production-grade validation**: File existence, size limits (100MB), format validation, empty file detection
+- ✅ **Advanced file parsing**:
+  - PDF extraction with `pypdf` (with metadata: author, title, page count)
+  - Word document extraction with `python-docx` (paragraphs + tables)
+  - PowerPoint extraction with `python-pptx` (slide-by-slide text)
+  - Text files with automatic encoding detection using `chardet`
+  - Image support with metadata extraction (OCR-ready for future enhancement)
+- ✅ **Sophisticated chunking**: Uses `RecursiveCharacterTextSplitter` from LangChain
+  - Preserves semantic boundaries (paragraphs, sentences)
+  - Configurable chunk size and overlap
+  - Intelligent handling of document structure
+- ✅ **Robust storage**: Batch insertion with rich metadata and error handling
+- ✅ **Conditional error routing**: Workflow stops on errors and routes to error handler
+
+**Added to `src/agent/main.py`**:
 ```python
-"""Document Ingestion Workflow using LangGraph."""
-
-import logging
-from typing import Literal
-
-from langgraph.graph import END, StateGraph
-
-from models.state import IngestionWorkflowState
-from tools import get_api_client
-
-logger = logging.getLogger(__name__)
-
-
-async def validate_document(state: IngestionWorkflowState) -> IngestionWorkflowState:
-    """Validate document before processing."""
-    logger.info("Node: validate_document")
-
-    # Check file exists, size limits, etc.
-    # For now, simple validation
-    if not state["file_path"]:
-        return {**state, "error": "No file path provided", "next_step": "handle_error"}
-
-    return {**state, "current_step": "validate_document", "next_step": "extract_content"}
-
-
-async def extract_content(state: IngestionWorkflowState) -> IngestionWorkflowState:
-    """Extract text content from document."""
-    logger.info("Node: extract_content")
-
-    # TODO: Add actual file reading logic
-    # For now, assume content is already in state
-    extracted = state.get("extracted_content", "")
-
-    if not extracted:
-        return {**state, "error": "No content to extract", "next_step": "handle_error"}
-
-    return {
-        **state,
-        "current_step": "extract_content",
-        "extracted_content": extracted,
-        "next_step": "chunk_content",
-    }
-
-
-async def chunk_content(state: IngestionWorkflowState) -> IngestionWorkflowState:
-    """Chunk content for optimal retrieval."""
-    logger.info("Node: chunk_content")
-
-    content = state["extracted_content"]
-    chunk_size = state.get("chunk_size", 1000)
-    chunk_overlap = state.get("chunk_overlap", 200)
-
-    # Simple chunking by character count
-    chunks = []
-    for i in range(0, len(content), chunk_size - chunk_overlap):
-        chunk_text = content[i : i + chunk_size]
-        chunks.append({"content": chunk_text, "index": len(chunks)})
-
-    logger.info(f"Created {len(chunks)} chunks")
-
-    return {
-        **state,
-        "current_step": "chunk_content",
-        "chunks": chunks,
-        "next_step": "store_chunks",
-    }
-
-
-async def store_chunks(state: IngestionWorkflowState) -> IngestionWorkflowState:
-    """Store chunks in vector database."""
-    logger.info("Node: store_chunks")
-
-    chunks = state["chunks"]
-    collection = state["collection_name"]
-    client = get_api_client()
-
-    inserted_ids = []
-
-    try:
-        # Batch insert
-        documents = [
-            {
-                "content": chunk["content"],
-                "metadata": {
-                    **state.get("document_metadata", {}),
-                    "chunk_index": chunk["index"],
-                    "total_chunks": len(chunks),
-                },
-            }
-            for chunk in chunks
-        ]
-
-        result = await client.insert_documents_batch(
-            collection_name=collection, documents=documents
-        )
-
-        inserted_ids = result.get("ids", [])
-        logger.info(f"Stored {len(inserted_ids)} chunks")
-
-        return {
-            **state,
-            "current_step": "store_chunks",
-            "inserted_ids": inserted_ids,
-            "workflow_complete": True,
-        }
-
-    except Exception as e:
-        logger.error(f"Storage failed: {e}")
-        return {**state, "error": str(e), "next_step": "handle_error"}
-
-
-def create_ingestion_workflow() -> StateGraph:
-    """Create document ingestion workflow."""
-    workflow = StateGraph(IngestionWorkflowState)
-
-    # Add nodes
-    workflow.add_node("validate_document", validate_document)
-    workflow.add_node("extract_content", extract_content)
-    workflow.add_node("chunk_content", chunk_content)
-    workflow.add_node("store_chunks", store_chunks)
-
-    # Set entry
-    workflow.set_entry_point("validate_document")
-
-    # Add edges
-    workflow.add_edge("validate_document", "extract_content")
-    workflow.add_edge("extract_content", "chunk_content")
-    workflow.add_edge("chunk_content", "store_chunks")
-    workflow.add_edge("store_chunks", END)
-
-    return workflow.compile()
-
-
-ingestion_workflow = create_ingestion_workflow()
-```
-
-**Test it**:
-```python
-# Add to agent/main.py
 async def ingest_document(
-    self, content: str, collection_name: str = "intramind_documents"
-) -> dict:
-    """Ingest a document into the system."""
-    # Implementation
+    self,
+    file_path: str,
+    collection_name: str = "intramind_documents",
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    document_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Ingest a document into the system with advanced processing."""
 ```
 
-### 3. 🎨 Create Architecture Diagrams
+**Created `tests/test_ingestion_workflow.py` (891 lines)**:
+- ✅ 32 tests with 100% pass rate
+- Unit tests for each workflow node (validation, extraction, chunking, storage)
+- Integration tests with full workflow execution
+- Agent-level tests
+- Mock tests for PDF, DOCX, PPTX extraction
+
+**Dependencies Added**:
+- `pypdf>=3.17.0` - Modern PDF parsing
+- `python-docx>=1.1.0` - Word document parsing
+- `chardet>=5.2.0` - Encoding detection
+- `langchain-text-splitters>=0.2.0` - Advanced text chunking
+
+**Key Features**:
+- Supports: PDF, DOCX, PPTX, TXT, MD, PNG, JPG, GIF, BMP
+- Metadata preservation throughout pipeline
+- Comprehensive error handling with graceful degradation
+- Timezone-aware timestamps (no deprecation warnings)
+- Production-ready code quality
+
+**Example Usage**:
+```python
+from agent import IntraMindAgent
+
+agent = IntraMindAgent()
+
+result = await agent.ingest_document(
+    file_path="./documents/annual_report.pdf",
+    collection_name="company_reports",
+    chunk_size=1500,
+    chunk_overlap=300,
+    document_metadata={"year": 2024, "department": "finance"}
+)
+
+if result["success"]:
+    print(f"✓ Ingested {result['chunks_stored']} chunks")
+```
+
+---
+
+### 4. 🎨 Create Architecture Diagrams
 
 **Goal**: Visual documentation for your portfolio
 
@@ -585,52 +516,50 @@ from workflows.search_workflow import search_workflow
 print(search_workflow.get_graph().draw_mermaid())
 ```
 
-### 4. 🧪 Add Integration Tests
+### 5. ✅ Add Integration Tests (COMPLETED)
 
-Create `tests/test_search_workflow.py`:
+**Goal**: Create comprehensive end-to-end integration tests
 
-```python
-"""Integration tests for search workflow."""
+**Status**: ✅ **COMPLETE** - 7 integration tests created and passing
 
-import pytest
-from unittest.mock import AsyncMock, patch
+**What Was Built**:
+- Created `tests/test_e2e_ingestion_search.py` (625 lines, 7 comprehensive tests)
+- Tests cover complete workflow: ingest → parse → chunk → embed → search → retrieve
+- All major scenarios covered: simple/complex queries, multi-document, score filtering
+- Proper test isolation with unique collection names
+- Comprehensive documentation in `tests/README_INTEGRATION_TESTS.md`
 
-from agent import IntraMindAgent
+**Key Tests**:
+1. ✅ `test_ingest_then_simple_search` - Core E2E workflow
+2. ✅ `test_ingest_then_complex_search` - Query expansion & multi-query
+3. ✅ `test_ingest_multiple_docs_then_search` - Cross-document search
+4. ✅ `test_ingest_then_search_with_min_score` - Score filtering
+5. ✅ `test_search_empty_collection_no_crash` - Edge cases
+6. ✅ `test_ingest_markdown_then_search` - Format support
+7. ✅ `test_ingest_large_document` - Performance validation
 
+**Infrastructure Enhancements**:
+- Added `min_score` parameter support throughout the stack
+- Configured pytest markers (`@pytest.mark.integration`)
+- Updated all existing tests to include new state fields
 
-@pytest.mark.asyncio
-async def test_simple_query_classification():
-    """Test that simple queries are classified correctly."""
-    agent = IntraMindAgent()
-
-    with patch("workflows.search_workflow.get_api_client") as mock_client:
-        mock_client.return_value.search = AsyncMock(
-            return_value={"results": [], "query": "test", "total_results": 0}
-        )
-
-        result = await agent.search("What is the weather?")
-
-        assert result["complexity"] == "simple"
-
-
-@pytest.mark.asyncio
-async def test_complex_query_expansion():
-    """Test that complex queries are expanded."""
-    agent = IntraMindAgent()
-
-    result = await agent.search(
-        "Compare Q3 and Q4 revenue and explain the differences"
-    )
-
-    assert result["complexity"] == "complex"
-    assert result.get("expanded_queries") is not None
-    assert len(result["expanded_queries"]) >= 2
-```
-
-Run tests:
+**Run Tests**:
 ```bash
-pytest tests/ -v
+# Run all integration tests
+pytest -m integration -v
+
+# Run specific E2E tests
+pytest tests/test_e2e_ingestion_search.py -v -m integration
+
+# Run unit tests only
+pytest -m "not integration" -v
 ```
+
+**Documentation**:
+- `tests/README_INTEGRATION_TESTS.md` - Complete guide
+- `tests/INTEGRATION_TEST_SUMMARY.md` - Implementation summary
+
+**Total Test Count**: 94 tests (87 unit + 7 integration)
 
 ---
 
@@ -638,7 +567,7 @@ pytest tests/ -v
 
 ## ⏳ Portfolio Preparation (Week 3) - NOT STARTED
 
-### 5. 📹 Create Demo Materials
+### 6. 📹 Create Demo Materials
 
 #### a. Record Demo Video (3-5 minutes)
 
@@ -722,7 +651,7 @@ AI-powered document search using LangGraph state machines
 [Live Demo] [Code] [Architecture Docs]
 ```
 
-### 6. 📊 Add Observability
+### 7. 📊 Add Observability
 
 #### a. Implement Metrics
 
@@ -795,7 +724,7 @@ def metrics():
     console.print(table)
 ```
 
-### 7. 📝 Finalize Documentation
+### 8. 📝 Finalize Documentation
 
 **Complete these files**:
 - [x] README.md
@@ -817,7 +746,7 @@ def metrics():
 
 ## ⏳ Optional Advanced Features - NOT STARTED
 
-### 8. 🖼️ Add Multimodal Processing
+### 9. 🖼️ Add Multimodal Processing
 
 **Goal**: Process PDFs, images, presentations
 
@@ -841,7 +770,7 @@ Create `src/workflows/multimodal_workflow.py`:
 - python-pptx (PowerPoint processing)
 - Pillow (image handling)
 
-### 9. 🧠 Implement Agentic RAG
+### 10. 🧠 Implement Agentic RAG
 
 **Goal**: Self-correcting retrieval with query refinement
 
@@ -851,7 +780,7 @@ Create `src/workflows/multimodal_workflow.py`:
 - Automatic re-querying if results are poor
 - Source citation verification
 
-### 10. 🌐 Add Web UI
+### 11. 🌐 Add Web UI
 
 **Goal**: Beautiful frontend for demos
 
@@ -887,23 +816,27 @@ if st.button("Search"):
 - [x] README with architecture diagram ✅ **EXISTS**
 - [ ] Code pushed to GitHub ⏳ **TODO**
 
-### Portfolio-Ready ⭐ **WEEK 2 COMPLETE!**
-- [x] Search quality filtering (`min_score`) ✅ **DONE** - 3 integration tests passing
-- [x] Comprehensive test coverage ✅ **DONE** - 55 tests across all major components
+### Portfolio-Ready ⭐ **WEEK 2: 80% COMPLETE!**
+- [x] Search quality filtering (`min_score`) ✅ **DONE** - Full stack implementation
+- [x] Comprehensive test coverage ✅ **DONE** - 94 tests across all components
   - [x] Search workflow tests (18 tests)
   - [x] Agent interface tests (13 tests)
   - [x] Tools tests (18 tests)
   - [x] API client tests (3 tests)
-  - [x] Integration tests (3 tests)
-- [ ] Demo video recorded ⏳ **TODO**
-- [ ] Portfolio writeup completed ⏳ **TODO**
-- [ ] Architecture diagrams created ⏳ **TODO**
-- [ ] Metrics/observability implemented ⏳ **TODO**
-- [ ] At least one additional workflow (ingestion or multimodal) ⏳ **TODO**
+  - [x] Ingestion workflow tests (32 tests)
+  - [x] Integration tests (7 tests) ✅ **NEW!**
+  - [x] Min-score filtering tests (3 tests)
+- [x] Document ingestion workflow ✅ **DONE** - Production-ready with 32 tests
+- [x] End-to-end integration tests ✅ **DONE** - 7 comprehensive E2E tests
+- [ ] Architecture diagrams created ⏳ **TODO** - Final Week 2 task!
+- [ ] Demo video recorded ⏳ **Week 3**
+- [ ] Portfolio writeup completed ⏳ **Week 3**
+- [ ] Metrics/observability implemented ⏳ **Optional**
 
 ### Production-Grade 🚀
-- [x] Comprehensive test coverage ✅ **DONE** - 55 tests, all passing
+- [x] Comprehensive test coverage ✅ **DONE** - 94 tests, all passing
 - [x] Error handling and recovery tested ✅ **DONE** - Covered in workflow & agent tests
+- [x] End-to-end integration validation ✅ **DONE** - 7 comprehensive E2E tests
 - [ ] Performance benchmarks documented ⏳ **TODO**
 - [ ] Deployment guide (Docker Compose) ⏳ **TODO**
 - [ ] CI/CD pipeline setup ⏳ **TODO**
@@ -916,9 +849,9 @@ if st.button("Search"):
 | Phase | Time | Status | Focus |
 |-------|------|--------|-------|
 | Week 1 | 5-10 hrs | ✅ **COMPLETE** | Get running, test workflows, sample data |
-| Week 2 | 10-15 hrs | ✅ **COMPLETE** | Search quality (min_score ✅), comprehensive test suite (55 tests ✅) |
-| Week 3 | 5-10 hrs | ⏳ TODO | Demo materials, portfolio prep, polish |
-| **Total** | **20-35 hrs** | **~70% Done** | **Portfolio-ready AI agent** |
+| Week 2 | 10-15 hrs | 🚧 **80% COMPLETE** | min_score ✅, test suite (94 tests ✅), ingestion ✅, E2E tests ✅ |
+| Week 3 | 5-10 hrs | ⏳ TODO | Architecture diagrams, demo materials, portfolio prep |
+| **Total** | **20-35 hrs** | **~80% Done** | **Portfolio-ready AI agent** |
 
 ---
 
