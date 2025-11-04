@@ -2,9 +2,17 @@
 
 This guide outlines the recommended path to complete your AI agent and make it portfolio-ready.
 
-## 🎯 Current Status (Updated: November 4, 2025)
+## 🎯 Current Status (Updated: November 4, 2025 - 10:40 AM)
 
 **Week 1: COMPLETE ✅🎉** - Full end-to-end system working!
+**Week 2: IN PROGRESS 🚀** - Search quality improvements underway
+
+### 🎊 Latest Achievement
+**`min_score` Search Filtering Feature** - Just completed and tested!
+- Filter search results by similarity threshold (0.0-1.0)
+- Full stack implementation with comprehensive tests
+- Fixed critical metadata retrieval and score extraction bugs
+- All 3 integration tests passing ✅
 
 ### ✅ Completed
 - All services started and running end-to-end
@@ -17,9 +25,14 @@ This guide outlines the recommended path to complete your AI agent and make it p
 - Fixed API field name mismatches (snake_case ↔ camelCase)
 - Fixed proto message type references in Vector Service
 - Successfully tested complex query with expansion and synthesis
+- **✅ `min_score` filtering feature** - Filter search results by similarity threshold (0.0-1.0)
+  - Added parameter throughout stack (API client → API Gateway → Vector Service → Weaviate)
+  - Fixed metadata retrieval bug (API Gateway now requests metadata)
+  - Fixed score extraction (prioritize `certainty` over `score` field)
+  - Comprehensive test suite with 3 passing tests
 
-### 🔄 Ready to Start
-- Week 2: Core Enhancements
+### 🔄 In Progress
+- Week 2: Core Enhancements (min_score feature complete)
 
 ### ⏳ Not Started
 - Week 3: Portfolio Preparation
@@ -263,7 +276,63 @@ but this does not directly translate to increased revenue projections.
 
 ---
 
-## ⏳ Core Enhancements (Week 2) - NOT STARTED
+## 🚀 Core Enhancements (Week 2) - IN PROGRESS
+
+### 1. ✅ Search Quality Improvements (COMPLETED)
+
+#### a. ✅ Min Score Filtering (COMPLETED)
+
+**Goal**: Allow filtering search results by similarity score threshold
+
+**What Was Built**:
+- Added `min_score` parameter (0.0-1.0 range) to filter low-quality search results
+- Full stack implementation from Python client through to Weaviate
+- Fixed critical bugs in metadata retrieval and score extraction
+
+**Key Changes**:
+1. **API Client** (`ai-agent/src/tools/api_client.py`):
+   - Added `min_score` parameter to `search()` method
+   - Defaults to 0.0 (no filtering)
+
+2. **API Models** (`ai-agent/src/models/api.py`):
+   - Added `min_score` field to `SearchRequest`
+   - Proper validation (0.0 ≤ min_score ≤ 1.0)
+   - camelCase/snake_case conversion support
+
+3. **API Gateway** (`SearchMapper.cs`):
+   - Set `ReturnMetadata = true` in gRPC requests (critical fix!)
+   - Passes `min_score` to Vector Service
+
+4. **Vector Service** (`queries.py`):
+   - Implemented server-side filtering based on min_score
+   - Fixed score extraction to prioritize `certainty` field
+   - Added fallback chain: certainty → distance → score
+
+5. **Tests** (`tests/test_min_score_filtering.py`):
+   - 3 comprehensive test cases
+   - All passing ✅
+
+**Usage Example**:
+```python
+from src.tools.api_client import APIGatewayClient
+
+async with APIGatewayClient() as client:
+    # Only return results with >70% similarity
+    response = await client.search(
+        collection_name="intramind_documents",
+        query="What are our revenue projections?",
+        limit=10,
+        min_score=0.7  # Filter threshold
+    )
+    
+    # All results will have score >= 0.7
+    for result in response.results:
+        print(f"Score: {result.score:.3f} - {result.content[:50]}...")
+```
+
+**Status**: ✅ **COMPLETE** - All tests passing, feature production-ready
+
+---
 
 ### 2. 🔨 Add Document Ingestion Workflow
 
@@ -757,7 +826,8 @@ if st.button("Search"):
 - [ ] Code pushed to GitHub ⏳ **TODO**
 
 ### Portfolio-Ready ⭐
-- [ ] Integration tests passing ⏳ **TODO**
+- [x] Search quality filtering (`min_score`) ✅ **DONE** - 3 integration tests passing
+- [ ] Additional integration test coverage ⏳ **TODO**
 - [ ] Demo video recorded ⏳ **TODO**
 - [ ] Portfolio writeup completed ⏳ **TODO**
 - [ ] Architecture diagrams created ⏳ **TODO**
@@ -779,9 +849,9 @@ if st.button("Search"):
 | Phase | Time | Status | Focus |
 |-------|------|--------|-------|
 | Week 1 | 5-10 hrs | ✅ **COMPLETE** | Get running, test workflows, sample data |
-| Week 2 | 10-15 hrs | ⏳ TODO | Add workflow, tests, architecture docs |
+| Week 2 | 10-15 hrs | 🚀 **IN PROGRESS** | Search quality (min_score ✅), workflows, tests, docs |
 | Week 3 | 5-10 hrs | ⏳ TODO | Demo materials, portfolio prep, polish |
-| **Total** | **20-35 hrs** | **~33% Done** | **Portfolio-ready AI agent** |
+| **Total** | **20-35 hrs** | **~40% Done** | **Portfolio-ready AI agent** |
 
 ---
 
