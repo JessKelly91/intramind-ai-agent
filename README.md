@@ -215,6 +215,46 @@ async def stream_example():
 asyncio.run(stream_example())
 ```
 
+### Advanced Streaming Example
+
+```python
+import asyncio
+from agent import IntraMindAgent
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+
+async def streaming_search_with_ui():
+    """Stream search with live UI updates."""
+    agent = IntraMindAgent()
+    console = Console()
+    
+    with Live(console=console, refresh_per_second=4) as live:
+        current_step = "Initializing..."
+        results_count = 0
+        
+        async for update in agent.stream_search("What are our Q4 projections?"):
+            current_step = update.get('step', 'Processing')
+            results_count = update.get('results_count', 0)
+            
+            # Update live display
+            live.update(
+                Panel(
+                    f"[bold blue]Step:[/bold blue] {current_step}\n"
+                    f"[bold green]Results Found:[/bold green] {results_count}",
+                    title="🧠 IntraMind AI Agent",
+                    border_style="cyan"
+                )
+            )
+            
+            # Process final response
+            if update.get('complete') and update.get('response'):
+                console.print("\n[bold green]Final Response:[/bold green]")
+                console.print(update['response'])
+
+asyncio.run(streaming_search_with_ui())
+```
+
 ## 🔧 Configuration
 
 ### LLM Providers
@@ -250,6 +290,110 @@ DEFAULT_COLLECTION=intramind_documents
 SEARCH_LIMIT=10              # Default result limit
 ```
 
+## 🛡️ Error Handling
+
+### Graceful Error Recovery
+
+The agent includes comprehensive error handling at every workflow step:
+
+```python
+import asyncio
+from agent import IntraMindAgent
+
+async def search_with_error_handling():
+    """Demonstrate error handling patterns."""
+    agent = IntraMindAgent()
+    
+    try:
+        result = await agent.search(
+            query="What are our revenue projections?",
+            collection_name="intramind_documents",
+            num_results=10,
+            min_score=0.7
+        )
+        
+        # Check for success
+        if result["success"]:
+            print(f"✓ Response: {result['response']}")
+            print(f"✓ Found {len(result.get('citations', []))} sources")
+        else:
+            # Workflow completed but with errors
+            print(f"✗ Search failed: {result.get('error', 'Unknown error')}")
+            
+    except ConnectionError as e:
+        print(f"✗ API Gateway connection failed: {e}")
+        print("  → Check if API Gateway is running")
+        
+    except TimeoutError as e:
+        print(f"✗ Request timeout: {e}")
+        print("  → Try reducing num_results or increasing timeout")
+        
+    except Exception as e:
+        print(f"✗ Unexpected error: {e}")
+        print("  → Check logs for details")
+
+asyncio.run(search_with_error_handling())
+```
+
+### Custom Error Handling in Workflows
+
+```python
+# In your workflow node
+async def my_workflow_node(state: AgentState) -> AgentState:
+    """Node with proper error handling."""
+    try:
+        # Your logic here
+        result = await some_operation()
+        
+        return {
+            **state,
+            "current_step": "my_node",
+            "next_step": "next_node",
+            "data": result
+        }
+        
+    except ValueError as e:
+        # Validation errors
+        return {
+            **state,
+            "current_step": "my_node",
+            "error": f"Validation error: {e}",
+            "next_step": "handle_error"
+        }
+        
+    except Exception as e:
+        # Unexpected errors
+        logger.error(f"Node failed: {e}", exc_info=True)
+        return {
+            **state,
+            "current_step": "my_node",
+            "error": f"Unexpected error: {e}",
+            "next_step": "handle_error"
+        }
+```
+
+### Retry Logic
+
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10)
+)
+async def search_with_retry():
+    """Search with automatic retry on failure."""
+    agent = IntraMindAgent()
+    return await agent.search(query="What are our projections?")
+
+# Usage
+try:
+    result = await search_with_retry()
+    print(f"Success after retries: {result['response']}")
+except Exception as e:
+    print(f"Failed after 3 attempts: {e}")
+```
+
 ## 🎨 LangGraph Workflows
 
 ### Search Workflow
@@ -279,47 +423,304 @@ class SearchWorkflowState(AgentState):
 - After search → route to synthesize_results OR handle_error
 - After synthesis → END
 
-### Adding New Workflows
+### Creating Custom Workflows
 
-Create a new workflow in `src/workflows/`:
+Here's a complete example of a custom workflow for document summarization:
 
 ```python
+# src/workflows/summarization_workflow.py
 from langgraph.graph import StateGraph, END
 from models.state import AgentState
+from tools.api_client import APIGatewayClient
+from utils.llm import get_primary_llm
+from langchain_core.messages import SystemMessage, HumanMessage
 
-def my_custom_node(state: AgentState) -> AgentState:
-    # Your logic here
-    return {**state, "current_step": "my_node"}
+async def fetch_document(state: AgentState) -> AgentState:
+    """Fetch document by ID."""
+    doc_id = state["user_query"]  # Document ID passed as query
+    
+    try:
+        async with APIGatewayClient() as client:
+            doc = await client.get_document(
+                collection_name="intramind_documents",
+                document_id=doc_id
+            )
+        
+        return {
+            **state,
+            "current_step": "fetch_document",
+            "document_content": doc.content,
+            "next_step": "summarize"
+        }
+    except Exception as e:
+        return {
+            **state,
+            "current_step": "fetch_document",
+            "error": str(e),
+            "next_step": "handle_error"
+        }
 
-def create_my_workflow() -> StateGraph:
+async def summarize_document(state: AgentState) -> AgentState:
+    """Generate document summary."""
+    content = state.get("document_content", "")
+    llm = get_primary_llm()
+    
+    try:
+        response = await llm.ainvoke([
+            SystemMessage(content="Summarize the following document in 3-5 sentences."),
+            HumanMessage(content=content)
+        ])
+        
+        return {
+            **state,
+            "current_step": "summarize_document",
+            "response": response.content,
+            "workflow_complete": True
+        }
+    except Exception as e:
+        return {
+            **state,
+            "current_step": "summarize_document",
+            "error": str(e),
+            "next_step": "handle_error"
+        }
+
+async def handle_error(state: AgentState) -> AgentState:
+    """Handle workflow errors."""
+    error = state.get("error", "Unknown error")
+    return {
+        **state,
+        "current_step": "handle_error",
+        "response": f"Error: {error}",
+        "workflow_complete": True
+    }
+
+def create_summarization_workflow() -> StateGraph:
+    """Create the summarization workflow."""
     workflow = StateGraph(AgentState)
-
+    
     # Add nodes
-    workflow.add_node("my_node", my_custom_node)
-
-    # Set entry and edges
-    workflow.set_entry_point("my_node")
-    workflow.add_edge("my_node", END)
-
+    workflow.add_node("fetch_document", fetch_document)
+    workflow.add_node("summarize_document", summarize_document)
+    workflow.add_node("handle_error", handle_error)
+    
+    # Set entry point
+    workflow.set_entry_point("fetch_document")
+    
+    # Add conditional edges
+    def route_after_fetch(state):
+        return state.get("next_step", "summarize_document")
+    
+    workflow.add_conditional_edges(
+        "fetch_document",
+        route_after_fetch,
+        {
+            "summarize": "summarize_document",
+            "handle_error": "handle_error"
+        }
+    )
+    
+    # Terminal edges
+    workflow.add_edge("summarize_document", END)
+    workflow.add_edge("handle_error", END)
+    
     return workflow.compile()
 
-my_workflow = create_my_workflow()
+# Usage
+async def main():
+    workflow = create_summarization_workflow()
+    
+    result = await workflow.ainvoke({
+        "user_query": "doc-id-123",
+        "workflow_complete": False
+    })
+    
+    print(result["response"])
 ```
 
 ## 🧪 Testing
 
-### Test Suite
+### Test Suite Overview
 
-The project includes **55 comprehensive tests** covering all major components:
+The project includes **94 comprehensive tests** covering all major components:
 
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| `test_search_workflow.py` | 18 | LangGraph workflow (nodes, routing, integration) |
-| `test_agent.py` | 13 | Agent interface (search, streaming, errors) |
-| `test_agent_tools.py` | 18 | All 5 LangChain tools |
-| `test_api_client.py` | 3 | API client basics |
-| `test_min_score_filtering.py` | 3 | Integration tests |
-| **Total** | **55** | **All passing in ~4 seconds** ✅ |
+| Test File | Tests | Coverage | Focus |
+|-----------|-------|----------|-------|
+| `test_search_workflow.py` | 18 | Workflow nodes, routing, integration | LangGraph search workflow |
+| `test_ingestion_workflow.py` | 32 | Validation, parsing, chunking, storage | Document ingestion pipeline |
+| `test_agent.py` | 13 | Agent interface, streaming, errors | IntraMindAgent API |
+| `test_agent_tools.py` | 18 | All 5 LangChain tools | Tool implementations |
+| `test_e2e_ingestion_search.py` | 7 | End-to-end integration | Full system validation |
+| `test_api_client.py` | 3 | HTTP client basics | API Gateway client |
+| `test_min_score_filtering.py` | 3 | Score threshold filtering | Search quality feature |
+| **Total** | **94** | **67% coverage** | **All passing ✅** |
+
+### Testing Patterns
+
+#### 1. Testing Workflow Nodes
+
+```python
+# tests/test_search_workflow.py
+import pytest
+from unittest.mock import Mock, patch, AsyncMock
+from workflows.search_workflow import classify_query
+
+@pytest.mark.asyncio
+async def test_classify_query_simple():
+    """Test classification of simple query."""
+    state = {
+        "user_query": "What is the revenue?",
+        "num_results": 10,
+        "workflow_complete": False
+    }
+    
+    # Mock the LLM response
+    with patch("workflows.search_workflow.get_router_llm") as mock_llm:
+        mock_response = Mock()
+        mock_response.content = "simple"
+        mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_response)
+        
+        result = await classify_query(state)
+        
+        # Assertions
+        assert result["query_complexity"] == "simple"
+        assert result["current_step"] == "classify_query"
+        assert "next_step" in result
+
+@pytest.mark.asyncio
+async def test_classify_query_complex():
+    """Test classification of complex query."""
+    state = {
+        "user_query": "Compare Q3 and Q4 performance across all departments",
+        "num_results": 10,
+        "workflow_complete": False
+    }
+    
+    with patch("workflows.search_workflow.get_router_llm") as mock_llm:
+        mock_response = Mock()
+        mock_response.content = "complex"
+        mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_response)
+        
+        result = await classify_query(state)
+        
+        assert result["query_complexity"] == "complex"
+```
+
+#### 2. Testing Agent Interface
+
+```python
+# tests/test_agent.py
+import pytest
+from unittest.mock import AsyncMock, patch
+from agent import IntraMindAgent
+
+@pytest.mark.asyncio
+async def test_agent_search_success():
+    """Test successful agent search."""
+    agent = IntraMindAgent()
+    
+    # Mock the workflow execution
+    mock_result = {
+        "success": True,
+        "response": "Q4 revenue is projected at $5M",
+        "query_complexity": "simple",
+        "search_results": [{"id": "doc1", "content": "Revenue data"}],
+        "workflow_complete": True
+    }
+    
+    with patch.object(agent, '_search_workflow') as mock_workflow:
+        mock_workflow.ainvoke = AsyncMock(return_value=mock_result)
+        
+        result = await agent.search("What are revenue projections?")
+        
+        assert result["success"] is True
+        assert "response" in result
+        assert result["complexity"] == "simple"
+```
+
+#### 3. Testing Tools
+
+```python
+# tests/test_agent_tools.py
+import pytest
+from unittest.mock import AsyncMock, patch
+from tools.agent_tools import search_documents
+
+@pytest.mark.asyncio
+async def test_search_documents_tool():
+    """Test search_documents LangChain tool."""
+    mock_response = AsyncMock()
+    mock_response.results = [
+        Mock(document_id="1", content="Test", score=0.9, metadata={})
+    ]
+    
+    with patch("tools.agent_tools.APIGatewayClient") as mock_client:
+        mock_client.return_value.__aenter__.return_value.search = AsyncMock(
+            return_value=mock_response
+        )
+        
+        result = await search_documents._arun(
+            query="test query",
+            collection_name="docs",
+            limit=5
+        )
+        
+        assert "Found 1 results" in result
+        assert "doc_id: 1" in result
+```
+
+#### 4. Integration Testing
+
+```python
+# tests/test_e2e_ingestion_search.py
+import pytest
+from agent import IntraMindAgent
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_ingest_then_search():
+    """Test full workflow: ingest document then search."""
+    agent = IntraMindAgent()
+    collection = f"test_collection_{uuid.uuid4().hex[:8]}"
+    
+    # Step 1: Ingest document
+    ingest_result = await agent.ingest_document(
+        file_path="test_data/sample.txt",
+        collection_name=collection
+    )
+    assert ingest_result["success"] is True
+    assert ingest_result["chunks_stored"] > 0
+    
+    # Step 2: Search for content
+    search_result = await agent.search(
+        query="test content",
+        collection_name=collection
+    )
+    assert search_result["success"] is True
+    assert len(search_result["citations"]) > 0
+```
+
+### Running Tests
+
+```bash
+# All tests
+pytest tests/ -v
+
+# Unit tests only (fast, no services required)
+pytest -m "not integration" -v
+
+# Integration tests (requires running services)
+pytest -m integration -v
+
+# With coverage
+pytest tests/ --cov=src --cov-report=html --cov-report=term
+
+# Specific test file
+pytest tests/test_search_workflow.py -v
+
+# Specific test
+pytest tests/test_agent.py::test_agent_search_success -v
+```
 
 ### Coverage Report
 
@@ -331,23 +732,6 @@ The project includes **55 comprehensive tests** covering all major components:
 - ✅ `models/state.py` - State definitions
 - ✅ `agent_tools.py` - LangChain tools
 - ✅ `search_workflow.py` - 98% (LangGraph workflow)
-
-### Run Tests
-
-All tests:
-```bash
-pytest tests/ -v
-```
-
-With coverage report:
-```bash
-pytest tests/ --cov=src --cov-report=html --cov-report=term
-```
-
-Specific test file:
-```bash
-pytest tests/test_search_workflow.py -v
-```
 
 View HTML coverage report:
 ```bash
