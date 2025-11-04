@@ -204,6 +204,139 @@ def info() -> None:
 
 @cli.command()
 @click.option(
+    "--reset",
+    is_flag=True,
+    help="Reset all metrics to zero",
+)
+def metrics(reset: bool) -> None:
+    """Display agent performance metrics and statistics."""
+    from utils.metrics import get_metrics, reset_metrics
+
+    if reset:
+        reset_metrics()
+        console.print("[green]✓ Metrics reset successfully[/green]")
+        return
+
+    print_banner()
+    
+    # Get computed metrics
+    metrics_data = get_metrics()
+    
+    # Display queries metrics
+    queries_table = Table(
+        title="📊 Query Metrics",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    queries_table.add_column("Metric", style="cyan", width=30)
+    queries_table.add_column("Value", style="green", width=20)
+    
+    queries_table.add_row("Total Queries", str(metrics_data["queries"]["total"]))
+    queries_table.add_row(
+        "Simple Queries",
+        f"{metrics_data['queries']['simple']} ({metrics_data['queries']['simple_pct']:.1f}%)",
+    )
+    queries_table.add_row(
+        "Complex Queries",
+        f"{metrics_data['queries']['complex']} ({metrics_data['queries']['complex_pct']:.1f}%)",
+    )
+    
+    console.print(queries_table)
+    console.print()
+    
+    # Display ingestion metrics
+    if metrics_data["ingestions"]["total"] > 0:
+        ingestion_table = Table(
+            title="📄 Ingestion Metrics",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        ingestion_table.add_column("Metric", style="cyan", width=30)
+        ingestion_table.add_column("Value", style="green", width=20)
+        
+        ingestion_table.add_row(
+            "Total Ingestions",
+            str(metrics_data["ingestions"]["total"]),
+        )
+        ingestion_table.add_row(
+            "Successful",
+            f"{metrics_data['ingestions']['success']} ({metrics_data['ingestions']['success_rate']:.1f}%)",
+        )
+        ingestion_table.add_row(
+            "Failed",
+            str(metrics_data["ingestions"]["failed"]),
+        )
+        
+        console.print(ingestion_table)
+        console.print()
+    
+    # Display performance metrics
+    perf_table = Table(
+        title="⚡ Performance Metrics",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    perf_table.add_column("Metric", style="cyan", width=30)
+    perf_table.add_column("Value", style="green", width=20)
+    
+    perf_table.add_row(
+        "Average Latency",
+        f"{metrics_data['performance']['avg_latency_s']:.2f}s",
+    )
+    perf_table.add_row(
+        "Total Operations",
+        str(metrics_data["performance"]["total_operations"]),
+    )
+    perf_table.add_row(
+        "Error Count",
+        f"{metrics_data['errors']['total']} ({metrics_data['errors']['rate']:.1f}%)",
+    )
+    
+    console.print(perf_table)
+    console.print()
+    
+    # Display cost metrics
+    cost_table = Table(
+        title="💰 Cost Metrics (Estimated)",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    cost_table.add_column("Metric", style="cyan", width=30)
+    cost_table.add_column("Value", style="green", width=20)
+    
+    cost_table.add_row(
+        "Router LLM Calls",
+        f"{metrics_data['costs']['router_calls']} calls",
+    )
+    cost_table.add_row(
+        "Router Cost",
+        f"${metrics_data['costs']['router_cost_usd']:.4f}",
+    )
+    cost_table.add_row(
+        "Primary LLM Calls",
+        f"{metrics_data['costs']['primary_calls']} calls",
+    )
+    cost_table.add_row(
+        "Primary Cost",
+        f"${metrics_data['costs']['primary_cost_usd']:.4f}",
+    )
+    cost_table.add_row(
+        "Total Estimated Cost",
+        f"[bold]${metrics_data['costs']['total_cost_usd']:.4f}[/bold]",
+    )
+    
+    console.print(cost_table)
+    console.print()
+    
+    # Display system info
+    console.print(f"[dim]Uptime: {metrics_data['system']['uptime']}[/dim]")
+    console.print(f"[dim]Started: {metrics_data['system']['start_time']}[/dim]")
+    console.print()
+    console.print("[yellow]💡 Tip: Use --reset flag to reset metrics[/yellow]")
+
+
+@cli.command()
+@click.option(
     "--url",
     default=None,
     help="API Gateway URL (default: from settings)",

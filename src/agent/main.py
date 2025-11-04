@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator
 from langchain_core.messages import HumanMessage
 
 from models.state import IngestionWorkflowState, SearchWorkflowState
+from utils.metrics import track_ingestion, track_query
 from workflows.ingestion_workflow import ingestion_workflow
 from workflows.search_workflow import search_workflow
 
@@ -21,6 +22,7 @@ class IntraMindAgent:
         self.ingestion_workflow = ingestion_workflow
         logger.info("IntraMind agent initialized")
 
+    @track_query
     async def search(
         self,
         query: str,
@@ -106,7 +108,20 @@ class IntraMindAgent:
         Yields:
             State updates as the workflow progresses
         """
+        import time
+        from utils.metrics import _load_metrics, _save_metrics
+        
         logger.info(f"Streaming search: {query}")
+        
+        # Track metrics - start
+        start_time = time.time()
+        metrics = _load_metrics()
+        metrics["queries_total"] += 1
+        
+        # Track state for metrics
+        final_complexity = None
+        final_expanded_queries = []
+        had_error = False
 
         # Initialize state
         initial_state: SearchWorkflowState = {
@@ -138,6 +153,14 @@ class IntraMindAgent:
             async for event in self.search_workflow.astream(initial_state):
                 # Extract the node name and state
                 for node_name, node_state in event.items():
+                    # Track complexity and expanded queries for metrics
+                    if node_state.get("query_complexity"):
+                        final_complexity = node_state["query_complexity"]
+                    if node_state.get("expanded_queries"):
+                        final_expanded_queries = node_state["expanded_queries"]
+                    if node_state.get("error"):
+                        had_error = True
+                    
                     yield {
                         "node": node_name,
                         "step": node_state.get("current_step"),
@@ -151,15 +174,40 @@ class IntraMindAgent:
                         "error": node_state.get("error"),
                         "complete": node_state.get("workflow_complete", False),
                     }
+            
+            # Track metrics - end (success)
+            if final_complexity == "simple":
+                metrics["queries_simple"] += 1
+                metrics["llm_calls_router"] += 1
+            elif final_complexity == "complex":
+                metrics["queries_complex"] += 1
+                metrics["llm_calls_router"] += 1
+                metrics["llm_calls_primary"] += 1 + len(final_expanded_queries)
+            
+            latency_ms = (time.time() - start_time) * 1000
+            metrics["total_latency_ms"] += latency_ms
+            
+            if had_error:
+                metrics["errors_total"] += 1
+            
+            _save_metrics(metrics)
 
         except Exception as e:
             logger.error(f"Streaming search failed: {e}", exc_info=True)
+            metrics["errors_total"] += 1
+            
+            latency_ms = (time.time() - start_time) * 1000
+            metrics["total_latency_ms"] += latency_ms
+            
+            _save_metrics(metrics)
+            
             yield {
                 "node": "error",
                 "error": str(e),
                 "complete": True,
             }
 
+    @track_ingestion
     async def ingest_document(
         self,
         file_path: str,
