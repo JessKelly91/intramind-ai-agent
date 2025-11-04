@@ -2,20 +2,19 @@
 
 This guide outlines the recommended path to complete your AI agent and make it portfolio-ready.
 
-## 🎯 Current Status (Updated: November 4, 2025 - 12:24 PM)
+## 🎯 Current Status (Updated: November 4, 2025 - 12:36 PM)
 
 **Week 1: COMPLETE ✅🎉** - Full end-to-end system working!
-**Week 2: IN PROGRESS 🚧** - 4/5 core enhancements complete! (80% done)
+**Week 2: COMPLETE ✅🎉** - All core enhancements done! (100% complete)
 
 ### 🎊 Latest Achievement
-**End-to-End Integration Tests** - Complete system validation!
-- ✅ 7 comprehensive integration tests (all passing)
-- ✅ Full workflow testing: ingest → parse → chunk → search → retrieve
-- ✅ Tests simple queries, complex queries, multi-document scenarios
-- ✅ Score filtering, edge cases, and performance validation
-- ✅ Proper test isolation with unique collection names
-- ✅ Complete documentation and troubleshooting guides
-- ✅ Total test count: 94 tests (87 unit + 7 integration) ✅
+**Architecture Documentation** - Complete system visualization!
+- ✅ System-wide architecture diagrams (`ARCHITECTURE.md` at root)
+- ✅ Detailed workflow documentation (`ai-agent/docs/WORKFLOWS.md`)
+- ✅ Mermaid diagrams for all services and flows
+- ✅ Complete sequence diagrams for search and ingestion
+- ✅ State management documentation
+- ✅ **WEEK 2 COMPLETE! 🎉** All 5 core enhancements done!
 
 ### ✅ Completed
 - All services started and running end-to-end
@@ -47,12 +46,17 @@ This guide outlines the recommended path to complete your AI agent and make it p
   - Sophisticated chunking with semantic boundary preservation
   - Conditional error routing with robust error handling
   - Rich metadata extraction throughout pipeline
+- **✅ Architecture Documentation** - Complete system visualization
+  - System-wide architecture in `ARCHITECTURE.md` (root level)
+  - Detailed workflow documentation in `ai-agent/docs/WORKFLOWS.md`
+  - Mermaid diagrams for system overview, service communication, and workflows
+  - Comprehensive sequence diagrams for search and ingestion flows
+  - State management and extension guides
 
 ### 🔄 In Progress
 - Nothing currently
 
 ### ⏳ Not Started
-- Week 2 (Remaining): Architecture Diagrams
 - Week 3: Portfolio Preparation
 
 ---
@@ -294,7 +298,7 @@ but this does not directly translate to increased revenue projections.
 
 ---
 
-## 🚀 Core Enhancements (Week 2) - 🚧 IN PROGRESS (3/5 Complete)
+## 🚀 Core Enhancements (Week 2) - ✅ COMPLETE (5/5 Complete)
 
 ### 1. ✅ Search Quality Improvements (COMPLETED)
 
@@ -480,41 +484,42 @@ if result["success"]:
 
 ---
 
-### 4. 🎨 Create Architecture Diagrams
+### 4. ✅ Create Architecture Diagrams (COMPLETED)
 
 **Goal**: Visual documentation for your portfolio
 
-Create `docs/ARCHITECTURE.md`:
+**Status**: ✅ **COMPLETE** - Comprehensive architecture documentation created
 
-```markdown
-# IntraMind AI Agent Architecture
+**What Was Created**:
 
-## System Overview
+1. **`ARCHITECTURE.md`** (Root Level - System-wide documentation):
+   - System overview diagram with all 4 services (AI Agent, API Gateway, Vector Service, Weaviate)
+   - Service architecture details and responsibilities
+   - Communication flow diagrams (REST, gRPC protocols)
+   - Complete sequence diagrams for search and ingestion flows
+   - Technology stack and deployment architecture
+   - Port mapping and environment variables
+   - Production considerations (scaling, security, monitoring)
 
-[Include Mermaid diagrams or ASCII art of your architecture]
+2. **`ai-agent/docs/WORKFLOWS.md`** (AI Agent-specific documentation):
+   - Detailed LangGraph workflow diagrams (Search + Ingestion)
+   - Node-by-node implementation details with code examples
+   - State management and state transitions
+   - Routing logic and conditional edges
+   - Complete workflow definitions
+   - Extension guide for adding new nodes
+   - Testing strategies and best practices
 
-## LangGraph State Machine
+**Key Diagrams Included**:
+- ✅ System overview (Mermaid) - All services and connections
+- ✅ Search workflow state machine (Mermaid)
+- ✅ Ingestion workflow state machine (Mermaid)
+- ✅ Search request sequence diagram (simple + complex)
+- ✅ Document ingestion sequence diagram
+- ✅ Communication protocol flow
+- ✅ Deployment architecture
 
-[Visual representation of your workflows]
-
-## Component Interactions
-
-[Sequence diagrams showing request flow]
-```
-
-**Tools to use**:
-- [Mermaid](https://mermaid.js.org/) - Markdown-native diagrams
-- [Excalidraw](https://excalidraw.com/) - Hand-drawn style
-- [Draw.io](https://draw.io/) - Professional diagrams
-- LangGraph's built-in `.get_graph().draw_mermaid()` method
-
-**Export your workflow**:
-```python
-from workflows.search_workflow import search_workflow
-
-# Get Mermaid diagram
-print(search_workflow.get_graph().draw_mermaid())
-```
+All diagrams use **Mermaid syntax** and render natively on GitHub!
 
 ### 5. ✅ Add Integration Tests (COMPLETED)
 
@@ -814,9 +819,9 @@ if st.button("Search"):
 - [x] Search workflow handles simple and complex queries ✅ **DONE**
 - [x] CLI works in interactive mode ✅ **DONE**
 - [x] README with architecture diagram ✅ **EXISTS**
-- [ ] Code pushed to GitHub ⏳ **TODO**
+- [x] Code pushed to GitHub ✅ **EXISTS**
 
-### Portfolio-Ready ⭐ **WEEK 2: 80% COMPLETE!**
+### Portfolio-Ready ⭐ **WEEK 2: 100% COMPLETE! 🎉**
 - [x] Search quality filtering (`min_score`) ✅ **DONE** - Full stack implementation
 - [x] Comprehensive test coverage ✅ **DONE** - 94 tests across all components
   - [x] Search workflow tests (18 tests)
@@ -824,11 +829,14 @@ if st.button("Search"):
   - [x] Tools tests (18 tests)
   - [x] API client tests (3 tests)
   - [x] Ingestion workflow tests (32 tests)
-  - [x] Integration tests (7 tests) ✅ **NEW!**
+  - [x] Integration tests (7 tests)
   - [x] Min-score filtering tests (3 tests)
 - [x] Document ingestion workflow ✅ **DONE** - Production-ready with 32 tests
 - [x] End-to-end integration tests ✅ **DONE** - 7 comprehensive E2E tests
-- [ ] Architecture diagrams created ⏳ **TODO** - Final Week 2 task!
+- [x] Architecture diagrams created ✅ **DONE** - Complete system documentation!
+  - [x] `ARCHITECTURE.md` at root (system-wide)
+  - [x] `ai-agent/docs/WORKFLOWS.md` (workflows detail)
+  - [x] Mermaid diagrams for all services and flows
 - [ ] Demo video recorded ⏳ **Week 3**
 - [ ] Portfolio writeup completed ⏳ **Week 3**
 - [ ] Metrics/observability implemented ⏳ **Optional**
@@ -849,9 +857,9 @@ if st.button("Search"):
 | Phase | Time | Status | Focus |
 |-------|------|--------|-------|
 | Week 1 | 5-10 hrs | ✅ **COMPLETE** | Get running, test workflows, sample data |
-| Week 2 | 10-15 hrs | 🚧 **80% COMPLETE** | min_score ✅, test suite (94 tests ✅), ingestion ✅, E2E tests ✅ |
-| Week 3 | 5-10 hrs | ⏳ TODO | Architecture diagrams, demo materials, portfolio prep |
-| **Total** | **20-35 hrs** | **~80% Done** | **Portfolio-ready AI agent** |
+| Week 2 | 10-15 hrs | ✅ **COMPLETE** | min_score ✅, test suite (94 tests ✅), ingestion ✅, E2E tests ✅, architecture docs ✅ |
+| Week 3 | 5-10 hrs | ⏳ TODO | Demo materials, portfolio prep, observability (optional) |
+| **Total** | **20-35 hrs** | **~90% Done** | **Portfolio-ready AI agent** |
 
 ---
 
