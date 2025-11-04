@@ -277,6 +277,7 @@ class APIGatewayClient:
         collection_name: str,
         query: str,
         limit: int = 10,
+        min_score: float = 0.0,
         filter: dict[str, Any] | None = None,
     ) -> SearchResponse:
         """Perform semantic search.
@@ -285,6 +286,7 @@ class APIGatewayClient:
             collection_name: Collection to search
             query: Search query
             limit: Number of results
+            min_score: Minimum similarity score threshold (0.0-1.0)
             filter: Optional metadata filters
 
         Returns:
@@ -295,7 +297,7 @@ class APIGatewayClient:
         """
         logger.info(f"Searching {collection_name} for: {query[:50]}...")
         request = SearchRequest(
-            collection_name=collection_name, query=query, limit=limit, metadata_filters=filter
+            collection_name=collection_name, query=query, limit=limit, min_score=min_score, metadata_filters=filter
         )
         response = await self.client.post("/v1/search", json=request.model_dump(by_alias=True, exclude_none=True))
         response.raise_for_status()

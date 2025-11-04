@@ -76,6 +76,7 @@ class SearchRequest(BaseModel):
     collection_name: str = Field(..., description="Collection to search")
     query: str = Field(..., description="Search query")
     limit: int = Field(default=10, ge=1, le=100, description="Number of results")
+    min_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum similarity score threshold (0.0-1.0)")
     metadata_filters: dict[str, Any] | None = Field(None, description="Metadata filters", alias="metadataFilters")
 
 
