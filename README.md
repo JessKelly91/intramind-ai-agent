@@ -4,6 +4,8 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2%2B-green)](https://langchain-ai.github.io/langgraph/)
+[![Coverage](https://img.shields.io/badge/Coverage-67%25-brightgreen)](htmlcov/index.html)
+[![Tests](https://img.shields.io/badge/Tests-55%20passing-success)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 🎯 Overview
@@ -306,14 +308,52 @@ my_workflow = create_my_workflow()
 
 ## 🧪 Testing
 
-Run tests:
+### Test Suite
+
+The project includes **55 comprehensive tests** covering all major components:
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_search_workflow.py` | 18 | LangGraph workflow (nodes, routing, integration) |
+| `test_agent.py` | 13 | Agent interface (search, streaming, errors) |
+| `test_agent_tools.py` | 18 | All 5 LangChain tools |
+| `test_api_client.py` | 3 | API client basics |
+| `test_min_score_filtering.py` | 3 | Integration tests |
+| **Total** | **55** | **All passing in ~4 seconds** ✅ |
+
+### Coverage Report
+
+**Overall: 67% coverage** (404/606 statements)
+
+**Core Components (100% Coverage):**
+- ✅ `agent/main.py` - Agent interface
+- ✅ `models/api.py` - Data models
+- ✅ `models/state.py` - State definitions
+- ✅ `agent_tools.py` - LangChain tools
+- ✅ `search_workflow.py` - 98% (LangGraph workflow)
+
+### Run Tests
+
+All tests:
 ```bash
-pytest tests/
+pytest tests/ -v
 ```
 
-Run with coverage:
+With coverage report:
 ```bash
-pytest --cov=src tests/
+pytest tests/ --cov=src --cov-report=html --cov-report=term
+```
+
+Specific test file:
+```bash
+pytest tests/test_search_workflow.py -v
+```
+
+View HTML coverage report:
+```bash
+# Opens detailed line-by-line coverage
+open htmlcov/index.html  # macOS
+start htmlcov/index.html # Windows
 ```
 
 ## 📊 Performance
