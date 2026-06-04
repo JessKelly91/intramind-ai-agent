@@ -27,8 +27,28 @@ DEFAULT_METRICS = {
     "total_latency_ms": 0,
     "llm_calls_router": 0,
     "llm_calls_primary": 0,
+    # Step 4: Llama Guard output safety counters
+    "safety_flags_total": 0,
+    "safety_flags_by_category": {},
     "start_time": datetime.now().isoformat(),
 }
+
+
+def record_safety_flag(categories: list[str]) -> None:
+    """Increment safety flag counters when Llama Guard blocks a response.
+
+    Args:
+        categories: Llama Guard category codes (e.g. ["S1", "S5"]). Pass an
+            empty list if the response was flagged but no categories were
+            parsed from the verdict.
+    """
+    metrics = _load_metrics()
+    metrics["safety_flags_total"] = metrics.get("safety_flags_total", 0) + 1
+    by_cat = metrics.get("safety_flags_by_category") or {}
+    for cat in categories or ["UNCATEGORIZED"]:
+        by_cat[cat] = int(by_cat.get(cat, 0)) + 1
+    metrics["safety_flags_by_category"] = by_cat
+    _save_metrics(metrics)
 
 
 def _load_metrics() -> dict[str, Any]:

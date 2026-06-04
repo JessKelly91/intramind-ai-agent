@@ -1,6 +1,7 @@
 """Document Search Workflow using LangGraph."""
 
 import logging
+from datetime import datetime, timezone
 from typing import Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,6 +11,8 @@ from config import settings
 from models.state import SearchWorkflowState
 from tools import get_api_client
 from utils.llm import get_primary_llm, get_router_llm
+from utils.metrics import record_safety_flag
+from utils.safety import classify_output
 
 logger = logging.getLogger(__name__)
 
@@ -241,8 +244,7 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
             "current_step": "synthesize_results",
             "response": "I couldn't find any relevant documents for your query.",
             "citations": [],
-            "next_step": None,
-            "workflow_complete": True,
+            "next_step": "safety_check",
         }
 
     primary_llm = get_primary_llm()
@@ -297,6 +299,104 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
         "current_step": "synthesize_results",
         "response": answer,
         "citations": citations,
+        "next_step": "safety_check",
+    }
+
+
+async def safety_check(state: SearchWorkflowState) -> SearchWorkflowState:
+    """Screen the synthesized response with Llama Guard before returning.
+
+    Step 4 of the Free RAI Stack. Hard-block policy: if the classifier
+    flags the response as unsafe, route to ``handle_unsafe_response`` which
+    discards the original answer + citations and substitutes a templated
+    fallback. The original (flagged) text is never returned to the user.
+    """
+    logger.info("Node: safety_check")
+
+    # Allow opting out via settings (e.g. for tests or environments without Ollama).
+    if not settings.enable_safety_guard:
+        return {
+            **state,
+            "current_step": "safety_check",
+            "safety_flag": {"flagged": False, "categories": [], "checked_at": None},
+            "next_step": None,
+            "workflow_complete": True,
+        }
+
+    response_text = state.get("response") or ""
+    if not response_text:
+        # Nothing to classify - end the workflow.
+        return {
+            **state,
+            "current_step": "safety_check",
+            "safety_flag": {"flagged": False, "categories": [], "checked_at": None},
+            "next_step": None,
+            "workflow_complete": True,
+        }
+
+    result = await classify_output(
+        prompt=state.get("user_query") or "",
+        response=response_text,
+        model=settings.safety_guard_model,
+    )
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+    flag_meta = result.to_metadata(checked_at=checked_at)
+
+    if result.is_safe:
+        return {
+            **state,
+            "current_step": "safety_check",
+            "safety_flag": flag_meta,
+            "next_step": None,
+            "workflow_complete": True,
+        }
+
+    # Unsafe - record the block and route to the handler that strips the
+    # original response. We do NOT keep the flagged text in state past this
+    # node so it can never be exfiltrated by a downstream consumer.
+    logger.warning(
+        "Safety guard flagged response (categories=%s) - hard-blocking",
+        result.categories,
+    )
+    record_safety_flag(result.categories)
+
+    # Mark the current OTEL span (if tracing is enabled) so Phoenix shows
+    # blocked traces clearly. No-op when tracing is disabled.
+    try:
+        from opentelemetry import trace as _otel_trace
+
+        _span = _otel_trace.get_current_span()
+        if _span is not None and _span.is_recording():
+            _span.set_attribute("safety.flagged", True)
+            _span.set_attribute(
+                "safety.categories", ",".join(result.categories) or "UNCATEGORIZED"
+            )
+    except Exception:  # noqa: BLE001 - tracing must never break the request path
+        pass
+    return {
+        **state,
+        "current_step": "safety_check",
+        "safety_flag": flag_meta,
+        "next_step": "handle_unsafe_response",
+    }
+
+
+async def handle_unsafe_response(state: SearchWorkflowState) -> SearchWorkflowState:
+    """Replace a flagged response with the templated fallback message.
+
+    Hard-block policy:
+      * Replace ``response`` with ``settings.safety_fallback_message``.
+      * Discard ``citations`` so flagged sources aren't leaked indirectly.
+      * Keep ``safety_flag`` for observability (Phoenix span attribute).
+      * Do NOT preserve the original response anywhere in state.
+    """
+    logger.info("Node: handle_unsafe_response")
+    return {
+        **state,
+        "current_step": "handle_unsafe_response",
+        "response": settings.safety_fallback_message,
+        "citations": [],
         "next_step": None,
         "workflow_complete": True,
     }
@@ -370,6 +470,8 @@ def create_search_workflow(checkpointer=None):
     workflow.add_node("simple_search", simple_search)
     workflow.add_node("complex_search", complex_search)
     workflow.add_node("synthesize_results", synthesize_results)
+    workflow.add_node("safety_check", safety_check)
+    workflow.add_node("handle_unsafe_response", handle_unsafe_response)
     workflow.add_node("handle_error", handle_error)
 
     # Set entry point
@@ -379,7 +481,18 @@ def create_search_workflow(checkpointer=None):
     workflow.add_conditional_edges("classify_query", route_after_classification)
     workflow.add_conditional_edges("simple_search", route_after_search)
     workflow.add_conditional_edges("complex_search", route_after_search)
-    workflow.add_edge("synthesize_results", END)
+    # Synthesis always flows into the safety screen first.
+    workflow.add_edge("synthesize_results", "safety_check")
+    # The safety_check node itself decides whether to end or block.
+    workflow.add_conditional_edges(
+        "safety_check",
+        lambda state: state.get("next_step") or "end",
+        {
+            "handle_unsafe_response": "handle_unsafe_response",
+            "end": END,
+        },
+    )
+    workflow.add_edge("handle_unsafe_response", END)
     workflow.add_edge("handle_error", END)
 
     # Compile with optional checkpointer

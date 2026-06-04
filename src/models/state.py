@@ -39,6 +39,12 @@ class AgentState(TypedDict):
     response: str | None
     citations: list[str] | None
 
+    # Output safety (Step 4: Llama Guard)
+    # Populated when the safety classifier flags the synthesized response.
+    # Shape: {"flagged": bool, "categories": list[str], "checked_at": iso8601}
+    # NOTE: this dict NEVER contains the original (flagged) response text.
+    safety_flag: dict[str, Any] | None
+
     # Error handling
     error: str | None
     retry_count: int

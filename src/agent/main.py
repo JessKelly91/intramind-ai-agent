@@ -10,10 +10,19 @@ from config import settings
 from models.state import IngestionWorkflowState, SearchWorkflowState
 from utils.checkpoint import get_checkpointer
 from utils.metrics import track_ingestion, track_query
+from utils.observability import init_tracing
 from workflows.ingestion_workflow import ingestion_workflow
 from workflows.search_workflow import create_search_workflow
 
 logger = logging.getLogger(__name__)
+
+# Module-level tracing init. Idempotent: any other entry point (CLI, FastAPI
+# startup) calling init_tracing again is a no-op.
+init_tracing(
+    service_name=settings.tracing_service_name,
+    endpoint=settings.phoenix_endpoint,
+    enabled=settings.enable_tracing,
+)
 
 
 class IntraMindAgent:
@@ -89,6 +98,7 @@ class IntraMindAgent:
             "document_metadata": {"collection_name": collection_name},
             "response": None,
             "citations": None,
+            "safety_flag": None,
             "error": None,
             "retry_count": 0,
             "query_complexity": None,
@@ -110,6 +120,7 @@ class IntraMindAgent:
                 "complexity": result.get("query_complexity"),
                 "expanded_queries": result.get("expanded_queries"),
                 "thread_id": self.thread_id,
+                "safety_flag": result.get("safety_flag"),
             }
 
         except Exception as e:
@@ -173,6 +184,7 @@ class IntraMindAgent:
             "document_metadata": {"collection_name": collection_name},
             "response": None,
             "citations": None,
+            "safety_flag": None,
             "error": None,
             "retry_count": 0,
             "query_complexity": None,

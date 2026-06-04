@@ -111,6 +111,13 @@ cd ai-agent
 2. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
+
+# One-time spaCy model download (required for Presidio PII redaction - Step 3 of Free RAI Stack)
+python -m spacy download en_core_web_lg
+
+# One-time Ollama model pulls (Free RAI Stack: Step 2 judge + Step 4 safety classifier)
+ollama pull llama3.1:8b      # Ragas judge
+ollama pull llama-guard3     # Output safety classifier
 ```
 
 3. **Set up environment**:
@@ -798,6 +805,33 @@ Install development dependencies:
 ```bash
 pip install -e ".[dev]"
 ```
+
+## 🛡️ Responsible AI
+
+This project implements a **fully free, open-source Responsible AI stack** (the "Free RAI Stack"). All LLM-based judges and classifiers run on local Ollama, so the running cost is $0.
+
+| Capability | Tool | Where it lives |
+|---|---|---|
+| Tracing | Phoenix (Apache 2.0) | `docker-compose.yml` service + `src/utils/observability.py` |
+| RAG evals (CI) | Ragas with Ollama judge | `tests/eval/` + `.github/workflows/ci.yml` `rag-evals` job |
+| PII redaction | Presidio | `src/utils/pii.py` + `redact_pii` node in `ingestion_workflow.py` |
+| Output safety | Llama Guard via Ollama | `src/utils/safety.py` + `safety_check` node in `search_workflow.py` |
+| Drift monitoring | Evidently AI | `scripts/drift_report.py` + scheduled GitHub Action |
+| Governance docs | Model + dataset cards | `docs/cards/` |
+
+### PII Policy: Redact-on-Ingest with Tokenized Pseudonyms
+
+PII detected during document ingestion is replaced with **stable, type-tagged tokens** (e.g. `<PERSON_1>`, `<EMAIL_ADDRESS_2>`) before content is chunked and stored. Raw PII never enters Weaviate.
+
+Why this specific policy:
+- **Data minimization.** Raw PII never persists, so the blast radius of any backup, exfiltration, or unauthorized read is minimized.
+- **Embedding fidelity.** Tokenized pseudonyms preserve sentence structure, so retrieval quality on non-PII concepts is unaffected.
+- **Stable within a document.** The same surface text gets the same token across the document so the synthesizer can still resolve co-references coherently.
+- **Auditability.** `pii_findings` metadata on every chunk records the entity type, span offsets, and the assigned token — but never the raw value.
+
+Trade-off (accepted): this approach is **irreversible**. Once redacted on ingest, the original PII cannot be recovered. Future role-based unmasking would require a separate originals store with independent permissions and is explicitly out of scope here.
+
+To disable redaction (e.g. for a fully synthetic test corpus), set `ENABLE_PII_REDACTION=false`.
 
 ## 🔮 Future Enhancements
 

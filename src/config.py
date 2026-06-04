@@ -134,6 +134,88 @@ class Settings(BaseSettings):
         description="Path to SQLite database for conversation checkpoints",
     )
 
+    # Observability / Tracing (Step 1: Phoenix)
+    enable_tracing: bool = Field(
+        default=False,
+        description="Enable OpenTelemetry tracing to Phoenix (set ENABLE_TRACING=true)",
+    )
+    phoenix_endpoint: str = Field(
+        default="http://localhost:6006",
+        description="Base URL for the self-hosted Phoenix collector",
+    )
+    tracing_service_name: str = Field(
+        default="intramind-ai-agent",
+        description="Service/project name attached to OTEL spans",
+    )
+
+    # RAG Evaluation (Step 2: Ragas with Ollama judge)
+    ragas_judge_model: str = Field(
+        default="llama3.1:8b",
+        description="Ollama model used as the LLM judge for Ragas metrics",
+    )
+    ragas_enforce_thresholds: bool = Field(
+        default=False,
+        description=(
+            "If False, Ragas threshold tests run as warning-only (xfail). "
+            "Flip to True (or set RAGAS_ENFORCE_THRESHOLDS=true) to fail CI."
+        ),
+    )
+    ragas_threshold_faithfulness: float = Field(
+        default=0.7, description="Min faithfulness score before threshold test fails"
+    )
+    ragas_threshold_answer_relevancy: float = Field(
+        default=0.7,
+        description="Min answer_relevancy score before threshold test fails",
+    )
+    ragas_threshold_context_precision: float = Field(
+        default=0.7,
+        description="Min context_precision score before threshold test fails",
+    )
+    ragas_threshold_context_recall: float = Field(
+        default=0.7,
+        description="Min context_recall score before threshold test fails",
+    )
+
+    # PII Redaction (Step 3: Presidio - redact-on-ingest)
+    enable_pii_redaction: bool = Field(
+        default=True,
+        description="Detect and redact PII during ingestion before chunking",
+    )
+    pii_entities: list[str] = Field(
+        default_factory=lambda: [
+            "PERSON",
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "US_SSN",
+            "CREDIT_CARD",
+            "IP_ADDRESS",
+            "LOCATION",
+        ],
+        description="Presidio entity types to detect",
+    )
+    pii_score_threshold: float = Field(
+        default=0.5,
+        description="Minimum Presidio confidence score to count as a PII finding",
+    )
+
+    # Output Safety Guard (Step 4: Llama Guard via Ollama, hard-block policy)
+    enable_safety_guard: bool = Field(
+        default=True,
+        description="Run Llama Guard on synthesized responses before returning",
+    )
+    safety_guard_model: str = Field(
+        default="llama-guard3",
+        description="Ollama model tag used for output safety classification",
+    )
+    safety_fallback_message: str = Field(
+        default=(
+            "I can't provide a response to that query. "
+            "If you believe this is in error, please rephrase or contact your "
+            "administrator."
+        ),
+        description="Templated text returned in place of any flagged response",
+    )
+
     def get_primary_llm_config(self) -> dict:
         """Get configuration for primary LLM."""
         if self.primary_llm_provider == "anthropic":

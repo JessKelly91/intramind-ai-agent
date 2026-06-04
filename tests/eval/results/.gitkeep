@@ -1,0 +1,3 @@
+# Ragas eval results land here. The actual `latest.json` is gitignored,
+# but this directory is kept so test_ragas_thresholds.py can write into it
+# in CI without manual mkdir.

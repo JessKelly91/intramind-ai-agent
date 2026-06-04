@@ -1,0 +1,11 @@
+Onboarding Guide for New Engineers
+
+New engineers should expect a two-week onboarding program. Week one focuses on
+environment setup, security training, and codebase orientation. Week two
+focuses on shipping a small starter task with a designated buddy.
+
+All new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests
+for additional hardware should be filed through the IT portal.
+
+The first 1:1 with the engineering manager happens on day three. Buddies are
+assigned by the team lead within 48 hours of the engineer's start date.

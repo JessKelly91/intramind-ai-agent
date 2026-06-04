@@ -13,8 +13,10 @@ from typing import Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.graph import END, StateGraph
 
+from config import settings
 from models.state import IngestionWorkflowState
 from tools import get_api_client
+from utils.pii import get_default_redactor
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +161,7 @@ async def extract_content(state: IngestionWorkflowState) -> IngestionWorkflowSta
             **state,
             "current_step": "extract_content",
             "extracted_content": content,
-            "next_step": "chunk_content",
+            "next_step": "redact_pii",
             "document_metadata": {
                 **state.get("document_metadata", {}),
                 **metadata,
@@ -170,6 +172,91 @@ async def extract_content(state: IngestionWorkflowState) -> IngestionWorkflowSta
 
     except Exception as e:
         error_msg = f"Content extraction failed: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {**state, "error": error_msg, "next_step": "handle_error"}
+
+
+async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
+    """Redact PII in extracted content before chunking and storage.
+
+    Step 3 of the Free RAI Stack. Replaces detected PII with stable
+    type-tagged tokens so the embedder still sees grammatical text but no
+    raw PII ever lands in Weaviate. Findings (type + offsets, no values)
+    round-trip via document_metadata for auditability.
+
+    If `settings.enable_pii_redaction` is False or Presidio is unavailable,
+    this node is a pass-through and routes straight to chunk_content.
+    """
+    logger.info("Node: redact_pii")
+
+    content = state.get("extracted_content") or ""
+    base_metadata: dict[str, Any] = state.get("document_metadata", {})
+
+    if not settings.enable_pii_redaction:
+        logger.info("PII redaction disabled by settings - skipping")
+        return {
+            **state,
+            "current_step": "redact_pii",
+            "next_step": "chunk_content",
+            "document_metadata": {
+                **base_metadata,
+                "pii_redaction_applied": False,
+                "pii_findings": base_metadata.get("pii_findings", []),
+            },
+        }
+
+    try:
+        redactor = get_default_redactor(
+            entities=settings.pii_entities,
+            score_threshold=settings.pii_score_threshold,
+        )
+
+        if not redactor.available:
+            logger.warning(
+                "PII redactor unavailable (Presidio/spaCy not installed) - "
+                "passing content through unredacted"
+            )
+            return {
+                **state,
+                "current_step": "redact_pii",
+                "next_step": "chunk_content",
+                "document_metadata": {
+                    **base_metadata,
+                    "pii_redaction_applied": False,
+                    "pii_redaction_skipped_reason": "redactor_unavailable",
+                    "pii_findings": base_metadata.get("pii_findings", []),
+                },
+            }
+
+        doc_id = base_metadata.get("filename") or state.get("file_path")
+        redacted, findings = redactor.redact(content, doc_id=doc_id)
+
+        existing_findings = base_metadata.get("pii_findings", []) or []
+        all_findings = existing_findings + findings
+
+        logger.info(
+            "PII redaction complete: %d finding(s), content length %d -> %d",
+            len(findings),
+            len(content),
+            len(redacted),
+        )
+
+        return {
+            **state,
+            "current_step": "redact_pii",
+            "extracted_content": redacted,
+            "next_step": "chunk_content",
+            "document_metadata": {
+                **base_metadata,
+                "pii_redaction_applied": True,
+                "pii_redaction_timestamp": datetime.now(timezone.utc).isoformat(),
+                "pii_findings": all_findings,
+                "pii_findings_count": len(all_findings),
+            },
+        }
+
+    except Exception as e:
+        error_msg = f"PII redaction failed: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return {**state, "error": error_msg, "next_step": "handle_error"}
 
@@ -416,7 +503,16 @@ async def chunk_content(state: IngestionWorkflowState) -> IngestionWorkflowState
 
 
 async def store_chunks(state: IngestionWorkflowState) -> IngestionWorkflowState:
-    """Store chunks in vector database with rich metadata."""
+    """Store chunks in vector database with rich metadata.
+
+    Step 6 of the Free RAI Stack: every chunk now carries a standardized
+    provenance / governance metadata block:
+
+        source, ingested_by, ingested_at, consent_basis, retention_class,
+        pii_findings, pii_redaction_applied
+
+    See ``docs/cards/DATASETS.md`` for the full schema and allowed values.
+    """
     logger.info("Node: store_chunks")
 
     chunks = state["chunks"]
@@ -429,17 +525,36 @@ async def store_chunks(state: IngestionWorkflowState) -> IngestionWorkflowState:
     try:
         # Prepare documents for batch insertion
         documents = []
-        base_metadata = state.get("document_metadata", {})
-        
+        base_metadata = state.get("document_metadata", {}) or {}
+        ingested_at = datetime.now(timezone.utc).isoformat()
+
+        # Standardized governance/lineage fields. We don't override values the
+        # caller already supplied (e.g. an explicit consent_basis), but we do
+        # guarantee every chunk has *something* in each key.
+        governance_defaults = {
+            "source": base_metadata.get("source")
+            or base_metadata.get("filename")
+            or state.get("file_path", "unknown"),
+            "ingested_by": base_metadata.get("ingested_by", "system"),
+            "ingested_at": base_metadata.get("ingested_at", ingested_at),
+            "consent_basis": base_metadata.get("consent_basis", "internal"),
+            "retention_class": base_metadata.get("retention_class", "standard"),
+            "pii_findings": base_metadata.get("pii_findings", []),
+            "pii_redaction_applied": base_metadata.get(
+                "pii_redaction_applied", False
+            ),
+        }
+
         for chunk in chunks:
             doc = {
                 "content": chunk["content"],
                 "metadata": {
                     **base_metadata,
+                    **governance_defaults,
                     "chunk_index": chunk["index"],
                     "total_chunks": len(chunks),
                     "chunk_char_count": chunk["char_count"],
-                    "ingestion_timestamp": datetime.now(timezone.utc).isoformat(),
+                    "ingestion_timestamp": ingested_at,
                 },
             }
             documents.append(doc)
@@ -498,7 +613,14 @@ def route_after_validate(state: IngestionWorkflowState) -> str:
 
 
 def route_after_extract(state: IngestionWorkflowState) -> str:
-    """Route after extraction - to error handler or chunking."""
+    """Route after extraction - to error handler or PII redaction."""
+    if state.get("error"):
+        return "handle_error"
+    return "redact_pii"
+
+
+def route_after_redact(state: IngestionWorkflowState) -> str:
+    """Route after PII redaction - to error handler or chunking."""
     if state.get("error"):
         return "handle_error"
     return "chunk_content"
@@ -520,27 +642,31 @@ def route_after_store(state: IngestionWorkflowState) -> str:
 
 def create_ingestion_workflow() -> StateGraph:
     """Create document ingestion workflow with conditional error routing.
-    
+
     Workflow flow:
     1. validate_document -> Check file validity
        - If error -> handle_error
        - If success -> extract_content
     2. extract_content -> Extract text from file
        - If error -> handle_error
+       - If success -> redact_pii
+    3. redact_pii -> Detect + tokenize PII (Step 3: Presidio)
+       - If error -> handle_error
        - If success -> chunk_content
-    3. chunk_content -> Split into semantic chunks
+    4. chunk_content -> Split into semantic chunks
        - If error -> handle_error
        - If success -> store_chunks
-    4. store_chunks -> Store in vector database
+    5. store_chunks -> Store in vector database
        - If error -> handle_error
        - If success -> END
-    5. handle_error -> Error handling (routes to END)
+    6. handle_error -> Error handling (routes to END)
     """
     workflow = StateGraph(IngestionWorkflowState)
 
     # Add nodes
     workflow.add_node("validate_document", validate_document)
     workflow.add_node("extract_content", extract_content)
+    workflow.add_node("redact_pii", redact_pii)
     workflow.add_node("chunk_content", chunk_content)
     workflow.add_node("store_chunks", store_chunks)
     workflow.add_node("handle_error", handle_error)
@@ -557,16 +683,25 @@ def create_ingestion_workflow() -> StateGraph:
             "handle_error": "handle_error",
         }
     )
-    
+
     workflow.add_conditional_edges(
         "extract_content",
         route_after_extract,
+        {
+            "redact_pii": "redact_pii",
+            "handle_error": "handle_error",
+        }
+    )
+
+    workflow.add_conditional_edges(
+        "redact_pii",
+        route_after_redact,
         {
             "chunk_content": "chunk_content",
             "handle_error": "handle_error",
         }
     )
-    
+
     workflow.add_conditional_edges(
         "chunk_content",
         route_after_chunk,
@@ -575,7 +710,7 @@ def create_ingestion_workflow() -> StateGraph:
             "handle_error": "handle_error",
         }
     )
-    
+
     workflow.add_conditional_edges(
         "store_chunks",
         route_after_store,
@@ -584,7 +719,7 @@ def create_ingestion_workflow() -> StateGraph:
             "handle_error": "handle_error",
         }
     )
-    
+
     # Error handler always ends the workflow
     workflow.add_edge("handle_error", END)
 

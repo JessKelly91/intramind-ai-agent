@@ -82,6 +82,11 @@ class APIGatewayClient:
         response = await self.client.get("/v1/collections")
         response.raise_for_status()
         data = response.json()
+
+        # API Gateway returns direct array, not wrapped in object
+        if isinstance(data, list):
+            return [CollectionResponse(**col) for col in data]
+        # Fallback for wrapped response
         return [CollectionResponse(**col) for col in data.get("collections", [])]
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

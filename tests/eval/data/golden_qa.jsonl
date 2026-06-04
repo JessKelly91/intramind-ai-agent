@@ -1,0 +1,10 @@
+{"id": "q1", "question": "What was IntraMind's total Q4 2024 revenue?", "ground_truth": "Total revenue for Q4 2024 was 12.4 million dollars.", "expected_source": "q4_2024_earnings.txt"}
+{"id": "q2", "question": "How much did EMEA contribute in Q4 2024?", "ground_truth": "EMEA contributed 3.1 million dollars in Q4 2024.", "expected_source": "q4_2024_earnings.txt"}
+{"id": "q3", "question": "What dividend did the board approve?", "ground_truth": "The board approved a quarterly dividend of 0.15 dollars per share, payable on March 15, 2025.", "expected_source": "q4_2024_earnings.txt"}
+{"id": "q4", "question": "Did Q4 net income beat analyst consensus?", "ground_truth": "Yes. Net income was 3.2 million dollars and consensus was 2.9 million dollars.", "expected_source": "q4_2024_earnings.txt"}
+{"id": "q5", "question": "What activities does the Acceptable Use Policy prohibit?", "ground_truth": "Sharing credentials, installing unapproved software, and storing customer data on personal devices.", "expected_source": "acceptable_use_policy.txt"}
+{"id": "q6", "question": "How quickly should suspected AUP violations be reported?", "ground_truth": "Within 24 hours of discovery.", "expected_source": "acceptable_use_policy.txt"}
+{"id": "q7", "question": "What can be the consequence of an AUP violation?", "ground_truth": "Disciplinary action up to and including termination.", "expected_source": "acceptable_use_policy.txt"}
+{"id": "q8", "question": "How long is the new engineer onboarding program?", "ground_truth": "Two weeks.", "expected_source": "onboarding_guide.txt"}
+{"id": "q9", "question": "What hardware do new engineers receive by default?", "ground_truth": "A MacBook Pro with 32 GB of RAM.", "expected_source": "onboarding_guide.txt"}
+{"id": "q10", "question": "When is the first 1:1 with the engineering manager?", "ground_truth": "Day three.", "expected_source": "onboarding_guide.txt"}

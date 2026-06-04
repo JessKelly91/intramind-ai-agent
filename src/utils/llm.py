@@ -4,8 +4,8 @@ import logging
 from typing import Any
 
 from langchain_anthropic import ChatAnthropic
-from langchain_community.chat_models import ChatOllama
 from langchain_core.language_models import BaseChatModel
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from config import settings

@@ -1,0 +1,12 @@
+Acceptable Use Policy
+
+All employees must use company systems in accordance with this Acceptable Use
+Policy. The policy applies to laptops, mobile devices, and any cloud services
+provisioned by IT.
+
+Prohibited activities include sharing credentials, installing unapproved
+software, and storing customer data on personal devices. Violations may result
+in disciplinary action up to and including termination.
+
+Employees should report suspected violations to the security team within 24
+hours of discovery.

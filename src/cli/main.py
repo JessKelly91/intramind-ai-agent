@@ -489,6 +489,13 @@ async def _manage_conversation(thread_id: str | None, clear: bool, history: bool
 
 def main() -> None:
     """Main entry point."""
+    from utils.observability import init_tracing
+
+    init_tracing(
+        service_name=settings.tracing_service_name,
+        endpoint=settings.phoenix_endpoint,
+        enabled=settings.enable_tracing,
+    )
     cli()
 
 

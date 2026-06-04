@@ -25,10 +25,15 @@ class CollectionCreate(BaseModel):
 class CollectionResponse(BaseModel):
     """Response model for collection operations."""
 
-    name: str
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+    collection_name: str = Field(alias="collectionName")
     description: str | None = None
-    vector_config: dict[str, Any] | None = None
-    properties: dict[str, Any] | None = None
+    vector_count: int = Field(default=0, alias="vectorCount")
+    created_at: str | None = Field(None, alias="createdAt")
 
 
 # Document Models
