@@ -125,8 +125,12 @@ class APIGatewayClient:
             httpx.HTTPStatusError: If request fails
         """
         logger.info(f"Creating collection: {name}")
-        request = CollectionCreate(name=name, description=description, properties=properties)
-        response = await self.client.post("/v1/collections", json=request.model_dump())
+        request = CollectionCreate(
+            collection_name=name, description=description, properties=properties
+        )
+        response = await self.client.post(
+            "/v1/collections", json=request.model_dump(by_alias=True, exclude_none=True)
+        )
         response.raise_for_status()
         return CollectionResponse(**response.json())
 

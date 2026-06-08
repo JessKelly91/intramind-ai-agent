@@ -15,7 +15,12 @@ def to_camel(string: str) -> str:
 class CollectionCreate(BaseModel):
     """Request model for creating a collection."""
 
-    name: str = Field(..., description="Collection name")
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+    collection_name: str = Field(..., description="Collection name")
     description: str | None = Field(None, description="Collection description")
     properties: dict[str, Any] | None = Field(
         None, description="Schema properties for the collection"
