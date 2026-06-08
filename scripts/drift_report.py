@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import datetime as dt
+import html
 import json
 import logging
 import os
@@ -150,6 +151,34 @@ def _render_report(
     logger.info("Wrote drift report to %s", out_path)
 
 
+def _render_no_data_report(collection: str, out_path: Path) -> None:
+    """Write a lightweight report when probe searches return no rows."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    generated_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    collection_html = html.escape(collection)
+    html_doc = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>IntraMind Drift Report - No Data</title>
+</head>
+<body>
+  <h1>IntraMind Drift Report</h1>
+  <p><strong>Status:</strong> No retrieval rows were available for this run.</p>
+  <p><strong>Collection:</strong> {collection_html}</p>
+  <p><strong>Generated at:</strong> {generated_at}</p>
+  <p>
+    The weekly drift job completed, but all probe searches failed or returned
+    no results. In the CI compose profile, semantic vectorizers are disabled, so
+    retrieval-dependent drift metrics may be unavailable.
+  </p>
+</body>
+</html>
+"""
+    out_path.write_text(html_doc, encoding="utf-8")
+    logger.warning("Wrote no-data drift report to %s", out_path)
+
+
 def _update_index(output_dir: Path, latest: Path) -> None:
     """Maintain a simple docs/drift/index.md listing the most recent reports."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -178,19 +207,28 @@ async def _async_main(args: argparse.Namespace) -> int:
     if args.probe_file and Path(args.probe_file).exists():
         probes = json.loads(Path(args.probe_file).read_text(encoding="utf-8"))
 
+    output_dir = Path(args.output_dir)
+    today = dt.date.today().isoformat()
+    out_path = output_dir / f"{today}.html"
+
     rows = await _gather_rows(args.collection, probes)
     if not rows:
-        logger.error(
-            "No rows returned from collection %s - is it populated?", args.collection
+        logger.warning(
+            "No rows returned from collection %s; drift report will record a no-data run.",
+            args.collection,
         )
-        return 1
+        print(
+            "::warning title=Drift report has no retrieval rows::All probe searches "
+            "failed or returned no results. CI disables semantic vectorizers, so "
+            "retrieval-dependent drift metrics may be unavailable."
+        )
+        _render_no_data_report(args.collection, out_path)
+        _update_index(output_dir, out_path)
+        return 0
 
     split_at = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=args.window_days)
     reference, current = _split_windows(rows, split_at)
 
-    output_dir = Path(args.output_dir)
-    today = dt.date.today().isoformat()
-    out_path = output_dir / f"{today}.html"
     _render_report(reference, current, out_path)
     _update_index(output_dir, out_path)
     return 0
