@@ -127,13 +127,60 @@ async def _run_agent(
     return rows
 
 
+_METRIC_NAMES = (
+    "faithfulness",
+    "answer_relevancy",
+    "context_precision",
+    "context_recall",
+)
+
+
+def _install_ragas_compat_stubs() -> None:
+    """Stub langchain_community symbols that ragas hard-imports but no longer ship.
+
+    ragas imports ``ChatVertexAI`` / ``VertexAI`` from ``langchain_community`` at
+    module load, but ``langchain-community`` 0.4.x removed those paths. They are
+    never used with an Ollama judge, so inject harmless placeholders to keep the
+    import chain working. No-op when the real modules are importable.
+    """
+    import types
+
+    try:  # langchain_community.chat_models.vertexai.ChatVertexAI
+        __import__(
+            "langchain_community.chat_models.vertexai", fromlist=["ChatVertexAI"]
+        )
+    except Exception:
+        mod = types.ModuleType("langchain_community.chat_models.vertexai")
+        mod.ChatVertexAI = type("ChatVertexAI", (), {})  # type: ignore[attr-defined]
+        sys.modules["langchain_community.chat_models.vertexai"] = mod
+
+    try:  # langchain_community.llms.VertexAI
+        from langchain_community.llms import VertexAI  # noqa: F401
+    except Exception:
+        try:
+            import langchain_community.llms as _llms  # type: ignore
+
+            if not hasattr(_llms, "VertexAI"):
+                _llms.VertexAI = type("VertexAI", (), {})  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+
 def _score_with_ragas(
     rows: list[dict[str, Any]], judge_model: str
 ) -> dict[str, Any]:
     """Score rows with Ragas using a local Ollama judge.
 
-    Returns a dict with per-question and aggregate scores.
+    Runs serialized (``RunConfig(max_workers=1)``): Ragas' default concurrent
+    async executor deadlocks on Windows with the current langchain stack.
+    Aggregates via pandas column means so it stays robust to ragas
+    result-accessor changes across versions.
+
+    NOTE: must be called OUTSIDE a running event loop - ``ragas.evaluate()``
+    starts its own loop and deadlocks if nested inside ``asyncio.run()``.
     """
+    _install_ragas_compat_stubs()
+
     try:
         from datasets import Dataset
         from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -146,6 +193,7 @@ def _score_with_ragas(
             context_recall,
             faithfulness,
         )
+        from ragas.run_config import RunConfig
     except ImportError as exc:
         raise RuntimeError(
             "Ragas dependencies are not installed. "
@@ -175,21 +223,23 @@ def _score_with_ragas(
         metrics=metrics,
         llm=judge_llm,
         embeddings=judge_embeddings,
+        # Serialize: the concurrent executor deadlocks on this stack/OS.
+        run_config=RunConfig(max_workers=1, timeout=240),
+        # A weak local judge occasionally emits unparseable output; record it as
+        # NaN-and-skip instead of aborting the whole run.
+        raise_exceptions=False,
+        show_progress=True,
     )
 
-    aggregate = {
-        "faithfulness": float(result["faithfulness"]),
-        "answer_relevancy": float(result["answer_relevancy"]),
-        "context_precision": float(result["context_precision"]),
-        "context_recall": float(result["context_recall"]),
-    }
+    df = result.to_pandas()
+    aggregate: dict[str, float] = {}
+    for metric in _METRIC_NAMES:
+        if metric in df.columns:
+            aggregate[metric] = float(df[metric].astype(float).mean(skipna=True))
+        else:
+            aggregate[metric] = float("nan")
 
-    # Per-row scores. Ragas returns a Dataset/DataFrame; convert to records.
-    try:
-        per_row = result.to_pandas().to_dict(orient="records")
-    except Exception:
-        per_row = []
-
+    per_row = df.to_dict(orient="records")
     return {"aggregate": aggregate, "per_row": per_row}
 
 
@@ -209,24 +259,21 @@ def _write_results(
     return LATEST_RESULTS
 
 
-async def _async_main(args: argparse.Namespace) -> int:
+async def _gather_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
+    """Async phase: (optionally) seed the corpus, then drive the agent.
+
+    Kept separate from scoring so that ``ragas.evaluate()`` (which spins up its
+    own event loop) runs only after this loop has fully closed - calling it from
+    within ``asyncio.run()`` deadlocks.
+    """
     if args.seed:
         await _seed_corpus(args.collection)
 
     entries = _load_golden()
     if not entries:
-        print("No golden Q&A entries found.", file=sys.stderr)
-        return 1
+        raise RuntimeError("No golden Q&A entries found.")
 
-    rows = await _run_agent(entries, args.collection)
-    scores = _score_with_ragas(rows, args.judge_model)
-    out_path = _write_results(rows, scores, args.judge_model)
-
-    print(f"\nRagas evaluation complete. Results written to: {out_path}")
-    print(f"\nAggregate scores (judge: {args.judge_model}):")
-    for metric, value in scores["aggregate"].items():
-        print(f"  {metric:<20} {value:.3f}")
-    return 0
+    return await _run_agent(entries, args.collection)
 
 
 def main() -> int:
@@ -256,7 +303,24 @@ def main() -> int:
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)s %(name)s - %(message)s",
     )
-    return asyncio.run(_async_main(args))
+
+    # Ragas' internal async executor is more stable on the Selector loop;
+    # Windows' default Proactor loop can hang it.
+    if sys.platform.startswith("win"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # Phase 1 (async): seed + run the agent over the golden questions.
+    rows = asyncio.run(_gather_rows(args))
+
+    # Phase 2 (sync, OUTSIDE the event loop): score with Ragas and persist.
+    scores = _score_with_ragas(rows, args.judge_model)
+    out_path = _write_results(rows, scores, args.judge_model)
+
+    print(f"\nRagas evaluation complete. Results written to: {out_path}")
+    print(f"\nAggregate scores (judge: {args.judge_model}):")
+    for metric, value in scores["aggregate"].items():
+        print(f"  {metric:<20} {value:.3f}")
+    return 0
 
 
 if __name__ == "__main__":
