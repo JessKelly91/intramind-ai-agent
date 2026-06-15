@@ -243,6 +243,21 @@ def _score_with_ragas(
     return {"aggregate": aggregate, "per_row": per_row}
 
 
+def _prompt_versions() -> dict[str, Any] | None:
+    """Fingerprint the agent's prompts so each baseline records what produced it.
+
+    Returns {prompt_id: {id, version, hash}} or None if the registry can't be
+    imported (e.g. running the eval against an older agent checkout).
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    try:
+        from prompts.registry import fingerprints  # type: ignore[import]
+
+        return fingerprints()
+    except Exception:  # noqa: BLE001 - prompt stamping is best-effort metadata
+        return None
+
+
 def _write_results(
     rows: list[dict[str, Any]], scores: dict[str, Any], judge_model: str
 ) -> Path:
@@ -251,6 +266,9 @@ def _write_results(
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "judge_model": judge_model,
         "num_questions": len(rows),
+        # Records which prompt versions produced this baseline so score deltas
+        # can be attributed to specific prompt changes.
+        "prompt_versions": _prompt_versions(),
         "aggregate": scores["aggregate"],
         "per_row": scores["per_row"],
         "raw_rows": rows,

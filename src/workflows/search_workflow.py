@@ -9,6 +9,12 @@ from langgraph.graph import END, StateGraph
 
 from config import settings
 from models.state import SearchWorkflowState
+from prompts.registry import (
+    QUERY_CLASSIFIER,
+    QUERY_EXPANSION,
+    RESULT_SYNTHESIS,
+    annotate_span,
+)
 from tools import get_api_client
 from utils.llm import get_primary_llm, get_router_llm
 from utils.metrics import record_safety_flag
@@ -32,21 +38,9 @@ async def classify_query(state: SearchWorkflowState) -> SearchWorkflowState:
     query = state["user_query"]
     router_llm = get_router_llm()
 
-    # Prompt for classification
-    system_prompt = """You are a query classifier for a document search system.
-    Classify the user's query as either 'simple' or 'complex'.
-
-    Simple queries:
-    - Direct fact lookups
-    - Single-concept searches
-    - Questions that can be answered with one search
-
-    Complex queries:
-    - Multi-part questions
-    - Queries requiring aggregation of multiple documents
-    - Comparative or analytical questions
-
-    Respond with ONLY 'simple' or 'complex', nothing else."""
+    # Prompt for classification (versioned in prompts.registry)
+    annotate_span(QUERY_CLASSIFIER)
+    system_prompt = QUERY_CLASSIFIER.template
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -149,15 +143,9 @@ async def complex_search(state: SearchWorkflowState) -> SearchWorkflowState:
     query = state["user_query"]
     router_llm = get_router_llm()
 
-    # Generate expanded queries
-    system_prompt = """You are a query expansion expert for document search.
-    Given a complex query, generate 2-3 related search queries that will help find relevant documents.
-    Each query should focus on a different aspect of the original question.
-
-    Format your response as a numbered list:
-    1. [first query]
-    2. [second query]
-    3. [third query]"""
+    # Generate expanded queries (prompt versioned in prompts.registry)
+    annotate_span(QUERY_EXPANSION)
+    system_prompt = QUERY_EXPANSION.template
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -263,11 +251,9 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
     # Build conversation messages
     messages = []
     
-    # Add system prompt
-    system_prompt = """You are a helpful assistant that answers questions based on document search results.
-    Use the provided documents to answer the user's question.
-    Be concise and accurate. If the documents don't contain enough information, say so.
-    Mention which document numbers support your answer (e.g., "According to Documents 1 and 2...")."""
+    # Add system prompt (versioned in prompts.registry)
+    annotate_span(RESULT_SYNTHESIS)
+    system_prompt = RESULT_SYNTHESIS.template
     messages.append(SystemMessage(content=system_prompt))
     
     # Include conversation history if enabled (smart cost optimization)
