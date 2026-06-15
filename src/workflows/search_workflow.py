@@ -9,12 +9,8 @@ from langgraph.graph import END, StateGraph
 
 from config import settings
 from models.state import SearchWorkflowState
-from prompts.registry import (
-    QUERY_CLASSIFIER,
-    QUERY_EXPANSION,
-    RESULT_SYNTHESIS,
-    annotate_span,
-)
+from prompts.client import get_prompt
+from prompts.registry import annotate_span
 from tools import get_api_client
 from utils.llm import get_primary_llm, get_router_llm
 from utils.metrics import record_safety_flag
@@ -38,9 +34,10 @@ async def classify_query(state: SearchWorkflowState) -> SearchWorkflowState:
     query = state["user_query"]
     router_llm = get_router_llm()
 
-    # Prompt for classification (versioned in prompts.registry)
-    annotate_span(QUERY_CLASSIFIER)
-    system_prompt = QUERY_CLASSIFIER.template
+    # Prompt for classification (runtime registry with baked-in fallback)
+    prompt = get_prompt("query_classifier")
+    annotate_span(prompt)
+    system_prompt = prompt.template
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -143,9 +140,10 @@ async def complex_search(state: SearchWorkflowState) -> SearchWorkflowState:
     query = state["user_query"]
     router_llm = get_router_llm()
 
-    # Generate expanded queries (prompt versioned in prompts.registry)
-    annotate_span(QUERY_EXPANSION)
-    system_prompt = QUERY_EXPANSION.template
+    # Generate expanded queries (runtime registry with baked-in fallback)
+    prompt = get_prompt("query_expansion")
+    annotate_span(prompt)
+    system_prompt = prompt.template
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -251,9 +249,10 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
     # Build conversation messages
     messages = []
     
-    # Add system prompt (versioned in prompts.registry)
-    annotate_span(RESULT_SYNTHESIS)
-    system_prompt = RESULT_SYNTHESIS.template
+    # Add system prompt (runtime registry with baked-in fallback)
+    prompt = get_prompt("result_synthesis")
+    annotate_span(prompt)
+    system_prompt = prompt.template
     messages.append(SystemMessage(content=system_prompt))
     
     # Include conversation history if enabled (smart cost optimization)

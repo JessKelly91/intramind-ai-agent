@@ -148,6 +148,24 @@ class Settings(BaseSettings):
         description="Service/project name attached to OTEL spans",
     )
 
+    # Prompt Registry (runtime-served prompts with baked-in fallback)
+    prompt_registry_url: str | None = Field(
+        default=None,
+        description="Prompt Registry base URL. Unset keeps code-registry fallback only.",
+    )
+    prompt_registry_label: str = Field(
+        default="production",
+        description="Prompt label resolved at runtime (production, candidate, staging).",
+    )
+    prompt_registry_api_key: str | None = Field(
+        default=None,
+        description="Read/service API key for the Prompt Registry.",
+    )
+    prompt_registry_cache_ttl: int = Field(
+        default=60,
+        description="Prompt Registry in-memory cache TTL in seconds.",
+    )
+
     # RAG Evaluation (Step 2: Ragas with Ollama judge)
     ragas_judge_model: str = Field(
         default="llama3.1:8b",

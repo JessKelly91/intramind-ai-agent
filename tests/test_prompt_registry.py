@@ -6,6 +6,7 @@ what makes prompt changes auditable - you cannot silently change a prompt.
 """
 
 import hashlib
+import inspect
 import sys
 
 import pytest
@@ -70,10 +71,25 @@ def test_write_locks_is_idempotent(tmp_path, monkeypatch):
 
 
 def test_search_workflow_uses_registry_prompts():
-    """The workflow must source its prompts from the registry, not new literals."""
-    assert search_workflow_module.QUERY_CLASSIFIER is REGISTRY["query_classifier"]
-    assert search_workflow_module.QUERY_EXPANSION is REGISTRY["query_expansion"]
-    assert search_workflow_module.RESULT_SYNTHESIS is REGISTRY["result_synthesis"]
+    """The workflow must resolve prompts at runtime, not use new literals."""
+    source = inspect.getsource(search_workflow_module)
+    assert 'get_prompt("query_classifier")' in source
+    assert 'get_prompt("query_expansion")' in source
+    assert 'get_prompt("result_synthesis")' in source
+
+
+def test_prompt_client_falls_back_to_code_registry(monkeypatch):
+    from config import settings
+    from prompts.client import clear_prompt_cache, get_prompt
+
+    monkeypatch.setattr(settings, "prompt_registry_url", None)
+    clear_prompt_cache()
+
+    prompt = get_prompt("result_synthesis", label="production")
+
+    assert prompt.template == REGISTRY["result_synthesis"].template
+    assert prompt.source == "fallback"
+    assert prompt.label == "production"
 
 
 def test_annotate_span_is_safe_without_tracing():

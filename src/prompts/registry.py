@@ -49,6 +49,8 @@ class Prompt:
     id: str
     version: int
     template: str
+    label: str | None = None
+    source: str = "fallback"
 
     @property
     def hash(self) -> str:
@@ -140,6 +142,9 @@ def annotate_span(prompt: Prompt) -> None:
             span.set_attribute("prompt.id", prompt.id)
             span.set_attribute("prompt.version", prompt.version)
             span.set_attribute("prompt.hash", prompt.hash)
+            if prompt.label:
+                span.set_attribute("prompt.label", prompt.label)
+            span.set_attribute("prompt.source", prompt.source)
     except Exception:  # noqa: BLE001 - tracing must never break execution
         pass
 

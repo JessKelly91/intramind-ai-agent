@@ -25,6 +25,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 EVAL_DIR = Path(__file__).resolve().parent
@@ -258,22 +260,116 @@ def _prompt_versions() -> dict[str, Any] | None:
         return None
 
 
+def _active_prompt_versions(label: str) -> dict[str, Any] | None:
+    """Resolve active prompt versions from the runtime registry when configured."""
+
+    fallback_versions = _prompt_versions()
+    registry_url = os.environ.get("PROMPT_REGISTRY_URL", "").rstrip("/")
+    api_key = os.environ.get("PROMPT_REGISTRY_API_KEY", "")
+    if not registry_url or not api_key or not fallback_versions:
+        return fallback_versions
+
+    active: dict[str, Any] = {}
+    for prompt_id in fallback_versions:
+        try:
+            response = httpx.get(
+                f"{registry_url}/api/v1/prompts/{prompt_id}",
+                params={"label": label},
+                headers={"X-API-Key": api_key},
+                timeout=5.0,
+            )
+            response.raise_for_status()
+            body = response.json()
+            active[prompt_id] = {
+                "id": body["id"],
+                "version": body["version"],
+                "hash": body["hash"],
+                "label": body.get("label", label),
+                "source": "registry",
+            }
+        except Exception as exc:  # noqa: BLE001 - eval metadata is best-effort
+            logger.warning("Could not resolve runtime prompt %s: %s", prompt_id, exc)
+            active[prompt_id] = fallback_versions[prompt_id]
+    return active
+
+
+def _metric_threshold(metric: str) -> float:
+    env_key = f"RAGAS_THRESHOLD_{metric.upper()}"
+    if env_key in os.environ:
+        return float(os.environ[env_key])
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    try:
+        from config import settings  # type: ignore[import]
+
+        return float(getattr(settings, f"ragas_threshold_{metric}"))
+    except Exception:
+        return 0.7
+
+
+def _eval_passed(aggregate: dict[str, Any]) -> bool:
+    metrics = [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
+    ]
+    return all(float(aggregate.get(metric, 0.0)) >= _metric_threshold(metric) for metric in metrics)
+
+
+def _post_prompt_registry_evals(payload: dict[str, Any]) -> None:
+    """Best-effort POST of aggregate Ragas metrics to active prompt versions."""
+
+    registry_url = os.environ.get("PROMPT_REGISTRY_URL", "").rstrip("/")
+    api_key = os.environ.get("PROMPT_REGISTRY_API_KEY", "")
+    prompt_versions = payload.get("prompt_versions") or {}
+    if not registry_url or not api_key or not prompt_versions:
+        return
+
+    passed = _eval_passed(payload.get("aggregate", {}))
+    for prompt_id, prompt_version in prompt_versions.items():
+        version = prompt_version.get("version")
+        if not version:
+            continue
+        try:
+            response = httpx.post(
+                f"{registry_url}/api/v1/prompts/{prompt_id}/versions/{version}/evals",
+                headers={"X-API-Key": api_key},
+                json={
+                    "judge_model": payload["judge_model"],
+                    "metrics": payload["aggregate"],
+                    "passed": passed,
+                    "results_ref": str(LATEST_RESULTS),
+                },
+                timeout=5.0,
+            )
+            response.raise_for_status()
+        except Exception as exc:  # noqa: BLE001 - posting evals must not fail CI
+            logger.warning(
+                "Could not post Ragas eval metrics for %s v%s: %s",
+                prompt_id,
+                version,
+                exc,
+            )
+
+
 def _write_results(
     rows: list[dict[str, Any]], scores: dict[str, Any], judge_model: str
 ) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    label = os.environ.get("PROMPT_REGISTRY_LABEL", "production")
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "judge_model": judge_model,
         "num_questions": len(rows),
         # Records which prompt versions produced this baseline so score deltas
         # can be attributed to specific prompt changes.
-        "prompt_versions": _prompt_versions(),
+        "prompt_versions": _active_prompt_versions(label),
         "aggregate": scores["aggregate"],
         "per_row": scores["per_row"],
         "raw_rows": rows,
     }
     LATEST_RESULTS.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _post_prompt_registry_evals(payload)
     return LATEST_RESULTS
 
 
