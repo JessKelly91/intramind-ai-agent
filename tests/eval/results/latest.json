@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-06-15T12:54:06.678312+00:00",
+  "judge_model": "llama3.2:3b",
+  "num_questions": 10,
+  "aggregate": {
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.8693170042061076,
+    "context_precision": 0.9999999999,
+    "context_recall": 0.95
+  },
+  "per_row": [
+    {
+      "user_input": "What was IntraMind's total Q4 2024 revenue?",
+      "retrieved_contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "response": "I couldn't find any information on IntraMind's total Q4 2024 revenue in the provided documents. The only relevant document, Document 1, provides information about IntraMind's Q4 2024 earnings summary, including:\n\n* Total revenue for Q4 2024: $12.4 million\n* Year-over-year growth rate: 18%\n* Breakdown of regional revenue:\n\t+ North America: $7.5 million\n\t+ EMEA: $3.1 million\n\t+ APAC: $1.8 million\n\nHowever, it does not provide a total for Q4 2024 revenue alone, making it unclear what the question is asking.",
+      "reference": "Total revenue for Q4 2024 was 12.4 million dollars.",
+      "faithfulness": NaN,
+      "answer_relevancy": 1.0000000000000002,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "How much did EMEA contribute in Q4 2024?",
+      "retrieved_contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date."
+      ],
+      "response": "I couldn't find any information in the provided documents about EMEA's contribution in Q4 2024, specifically how much they contributed in terms of revenue or dollar amount.\n\nHowever, Document 1 does mention the revenue contributions from different regions:\n\n* North America: $7.5 million\n* EMEA: $3.1 million\n* APAC: $1.8 million\n\nSo, according to Document 1, EMEA's contribution was $3.1 million in revenue for Q4 2024.",
+      "reference": "EMEA contributed 3.1 million dollars in Q4 2024.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "What dividend did the board approve?",
+      "retrieved_contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "response": "I couldn't find any information about a dividend approved by the board in Documents 1, 2, or 3. \n\nDocument 1 mentions that the board of directors approved a quarterly dividend of 0.15 dollars per share, but this is not supported by Documents 2 and 3.\n\nAccording to Document 1 (page 1), the board approved a quarterly dividend of 0.15 dollars per share.",
+      "reference": "The board approved a quarterly dividend of 0.15 dollars per share, payable on March 15, 2025.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "Did Q4 net income beat analyst consensus?",
+      "retrieved_contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "response": "Based on Document 1, which is the IntraMind Q4 2024 Earnings Summary, we can determine that Q4 net income did beat analyst consensus.\n\nAccording to the document, IntraMind's net income was $3.2 million dollars for the quarter, exceeding the analyst consensus of $2.9 million dollars.\n\nTherefore, the answer is: Yes, Q4 net income did beat analyst consensus (Document 1).",
+      "reference": "Yes. Net income was 3.2 million dollars and consensus was 2.9 million dollars.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "What activities does the Acceptable Use Policy prohibit?",
+      "retrieved_contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "response": "According to Document 1 (Acceptable Use Policy), the Acceptable Use Policy prohibits the following activities:\n\n* Sharing credentials\n* Installing unapproved software\n* Storing customer data on personal devices\n\nThese prohibited activities may result in disciplinary action up to and including termination.\n\nThere is no information provided in Documents 2 (Onboarding Guide for New Engineers) or Document 3 (IntraMind Q4 2024 Earnings Summary) that relates to the Acceptable Use Policy or its prohibited activities.",
+      "reference": "Sharing credentials, installing unapproved software, and storing customer data on personal devices.",
+      "faithfulness": 1.0,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "How quickly should suspected AUP violations be reported?",
+      "retrieved_contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "response": "According to Document 1 (Acceptable Use Policy), suspected AUP violations should be reported to the security team within 24 hours.\n\nWhile the other documents do not specifically address the reporting timeframe for suspected AUP violations, they do provide information on various company policies and procedures, such as the onboarding process for new engineers (Document 2) and financial performance (Document 3).\n\nThere is no information in Document 3 that relates to reporting suspected AUP violations.",
+      "reference": "Within 24 hours of discovery.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "What can be the consequence of an AUP violation?",
+      "retrieved_contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date."
+      ],
+      "response": "Based on the provided documents, it appears that an AUP (Acceptable Use Policy) violation can result in disciplinary action, up to and including termination. According to Document 1, \"Violations may result in disciplinary action up to and including termination.\" This suggests that violating the company's acceptable use policy can have serious consequences for employees.\n\nAdditionally, Document 1 also mentions that employees who report suspected violations should do so within 24 hours. This implies that there is a process in place for reporting and addressing AUP violations, which may help mitigate the consequences of such actions.\n\nUnfortunately, Document 2 does not provide any information on the consequences of an AUP violation, as it appears to be unrelated to this topic. Similarly, Document 3 focuses on the onboarding process for new engineers and does not mention AUP violations at all.\n\nTherefore, based on Document 1 alone, it can be inferred that an AUP violation may result in disciplinary action, including termination.",
+      "reference": "Disciplinary action up to and including termination.",
+      "faithfulness": NaN,
+      "answer_relevancy": 0.8683728960078702,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "How long is the new engineer onboarding program?",
+      "retrieved_contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "response": "I'm sorry but I was unable to verify how long the new engineer onboarding program is, from the provided documents.",
+      "reference": "Two weeks.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    },
+    {
+      "user_input": "What hardware do new engineers receive by default?",
+      "retrieved_contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "response": "According to Document 1 (Onboarding Guide for New Engineers), new engineers receive a MacBook Pro with 32 GB of RAM by default as part of their onboarding program.\n\nAdditionally, Document 2 (Acceptable Use Policy) confirms that the company-provided laptop (in this case, a MacBook Pro) is subject to the Acceptable Use Policy, which outlines guidelines for using company systems and devices. However, it does not provide specific information about the hardware provided to new engineers beyond what's mentioned in Document 1.\n\nDocument 3 (IntraMind Q4 2024 Earnings Summary) appears to be unrelated to the question about hardware provided to new engineers, as it reports on the company's financial performance and region-wise revenue contributions.",
+      "reference": "A MacBook Pro with 32 GB of RAM.",
+      "faithfulness": NaN,
+      "answer_relevancy": 0.7395781166104524,
+      "context_precision": 0.9999999999,
+      "context_recall": 0.5
+    },
+    {
+      "user_input": "When is the first 1:1 with the engineering manager?",
+      "retrieved_contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "response": "According to Document 1, the first 1:1 with the engineering manager happens on day three of the two-week onboarding program for new engineers.\n\nDocument 2 does not mention anything about the timing or frequency of 1:1 meetings with the engineering manager.\n\nSince Document 3 appears to be an earnings summary and unrelated to the onboarding process, it is not relevant to answering this question.",
+      "reference": "Day three.",
+      "faithfulness": NaN,
+      "answer_relevancy": NaN,
+      "context_precision": NaN,
+      "context_recall": 1.0
+    }
+  ],
+  "raw_rows": [
+    {
+      "id": "q1",
+      "question": "What was IntraMind's total Q4 2024 revenue?",
+      "ground_truth": "Total revenue for Q4 2024 was 12.4 million dollars.",
+      "expected_source": "q4_2024_earnings.txt",
+      "answer": "I couldn't find any information on IntraMind's total Q4 2024 revenue in the provided documents. The only relevant document, Document 1, provides information about IntraMind's Q4 2024 earnings summary, including:\n\n* Total revenue for Q4 2024: $12.4 million\n* Year-over-year growth rate: 18%\n* Breakdown of regional revenue:\n\t+ North America: $7.5 million\n\t+ EMEA: $3.1 million\n\t+ APAC: $1.8 million\n\nHowever, it does not provide a total for Q4 2024 revenue alone, making it unclear what the question is asking.",
+      "contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "success": true
+    },
+    {
+      "id": "q2",
+      "question": "How much did EMEA contribute in Q4 2024?",
+      "ground_truth": "EMEA contributed 3.1 million dollars in Q4 2024.",
+      "expected_source": "q4_2024_earnings.txt",
+      "answer": "I couldn't find any information in the provided documents about EMEA's contribution in Q4 2024, specifically how much they contributed in terms of revenue or dollar amount.\n\nHowever, Document 1 does mention the revenue contributions from different regions:\n\n* North America: $7.5 million\n* EMEA: $3.1 million\n* APAC: $1.8 million\n\nSo, according to Document 1, EMEA's contribution was $3.1 million in revenue for Q4 2024.",
+      "contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date."
+      ],
+      "success": true
+    },
+    {
+      "id": "q3",
+      "question": "What dividend did the board approve?",
+      "ground_truth": "The board approved a quarterly dividend of 0.15 dollars per share, payable on March 15, 2025.",
+      "expected_source": "q4_2024_earnings.txt",
+      "answer": "I couldn't find any information about a dividend approved by the board in Documents 1, 2, or 3. \n\nDocument 1 mentions that the board of directors approved a quarterly dividend of 0.15 dollars per share, but this is not supported by Documents 2 and 3.\n\nAccording to Document 1 (page 1), the board approved a quarterly dividend of 0.15 dollars per share.",
+      "contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "success": true
+    },
+    {
+      "id": "q4",
+      "question": "Did Q4 net income beat analyst consensus?",
+      "ground_truth": "Yes. Net income was 3.2 million dollars and consensus was 2.9 million dollars.",
+      "expected_source": "q4_2024_earnings.txt",
+      "answer": "Based on Document 1, which is the IntraMind Q4 2024 Earnings Summary, we can determine that Q4 net income did beat analyst consensus.\n\nAccording to the document, IntraMind's net income was $3.2 million dollars for the quarter, exceeding the analyst consensus of $2.9 million dollars.\n\nTherefore, the answer is: Yes, Q4 net income did beat analyst consensus (Document 1).",
+      "contexts": [
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "success": true
+    },
+    {
+      "id": "q5",
+      "question": "What activities does the Acceptable Use Policy prohibit?",
+      "ground_truth": "Sharing credentials, installing unapproved software, and storing customer data on personal devices.",
+      "expected_source": "acceptable_use_policy.txt",
+      "answer": "According to Document 1 (Acceptable Use Policy), the Acceptable Use Policy prohibits the following activities:\n\n* Sharing credentials\n* Installing unapproved software\n* Storing customer data on personal devices\n\nThese prohibited activities may result in disciplinary action up to and including termination.\n\nThere is no information provided in Documents 2 (Onboarding Guide for New Engineers) or Document 3 (IntraMind Q4 2024 Earnings Summary) that relates to the Acceptable Use Policy or its prohibited activities.",
+      "contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "success": true
+    },
+    {
+      "id": "q6",
+      "question": "How quickly should suspected AUP violations be reported?",
+      "ground_truth": "Within 24 hours of discovery.",
+      "expected_source": "acceptable_use_policy.txt",
+      "answer": "According to Document 1 (Acceptable Use Policy), suspected AUP violations should be reported to the security team within 24 hours.\n\nWhile the other documents do not specifically address the reporting timeframe for suspected AUP violations, they do provide information on various company policies and procedures, such as the onboarding process for new engineers (Document 2) and financial performance (Document 3).\n\nThere is no information in Document 3 that relates to reporting suspected AUP violations.",
+      "contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "success": true
+    },
+    {
+      "id": "q7",
+      "question": "What can be the consequence of an AUP violation?",
+      "ground_truth": "Disciplinary action up to and including termination.",
+      "expected_source": "acceptable_use_policy.txt",
+      "answer": "Based on the provided documents, it appears that an AUP (Acceptable Use Policy) violation can result in disciplinary action, up to and including termination. According to Document 1, \"Violations may result in disciplinary action up to and including termination.\" This suggests that violating the company's acceptable use policy can have serious consequences for employees.\n\nAdditionally, Document 1 also mentions that employees who report suspected violations should do so within 24 hours. This implies that there is a process in place for reporting and addressing AUP violations, which may help mitigate the consequences of such actions.\n\nUnfortunately, Document 2 does not provide any information on the consequences of an AUP violation, as it appears to be unrelated to this topic. Similarly, Document 3 focuses on the onboarding process for new engineers and does not mention AUP violations at all.\n\nTherefore, based on Document 1 alone, it can be inferred that an AUP violation may result in disciplinary action, including termination.",
+      "contexts": [
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date."
+      ],
+      "success": true
+    },
+    {
+      "id": "q8",
+      "question": "How long is the new engineer onboarding program?",
+      "ground_truth": "Two weeks.",
+      "expected_source": "onboarding_guide.txt",
+      "answer": "I'm sorry but I was unable to verify how long the new engineer onboarding program is, from the provided documents.",
+      "contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery."
+      ],
+      "success": true
+    },
+    {
+      "id": "q9",
+      "question": "What hardware do new engineers receive by default?",
+      "ground_truth": "A MacBook Pro with 32 GB of RAM.",
+      "expected_source": "onboarding_guide.txt",
+      "answer": "According to Document 1 (Onboarding Guide for New Engineers), new engineers receive a MacBook Pro with 32 GB of RAM by default as part of their onboarding program.\n\nAdditionally, Document 2 (Acceptable Use Policy) confirms that the company-provided laptop (in this case, a MacBook Pro) is subject to the Acceptable Use Policy, which outlines guidelines for using company systems and devices. However, it does not provide specific information about the hardware provided to new engineers beyond what's mentioned in Document 1.\n\nDocument 3 (IntraMind Q4 2024 Earnings Summary) appears to be unrelated to the question about hardware provided to new engineers, as it reports on the company's financial performance and region-wise revenue contributions.",
+      "contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "success": true
+    },
+    {
+      "id": "q10",
+      "question": "When is the first 1:1 with the engineering manager?",
+      "ground_truth": "Day three.",
+      "expected_source": "onboarding_guide.txt",
+      "answer": "According to Document 1, the first 1:1 with the engineering manager happens on day three of the two-week onboarding program for new engineers.\n\nDocument 2 does not mention anything about the timing or frequency of 1:1 meetings with the engineering manager.\n\nSince Document 3 appears to be an earnings summary and unrelated to the onboarding process, it is not relevant to answering this question.",
+      "contexts": [
+        "Onboarding Guide for New Engineers\r\n\r\nNew engineers should expect a two-week onboarding program. Week one focuses on\r\nenvironment setup, security training, and codebase orientation. Week two\r\nfocuses on shipping a small starter task with a designated buddy.\r\n\r\nAll new engineers receive a MacBook Pro with 32 GB of RAM by default. Requests\r\nfor additional hardware should be filed through the IT portal.\r\n\r\nThe first 1:1 with the engineering manager happens on day three. Buddies are\r\nassigned by the team lead within 48 hours of the engineer's start date.",
+        "Acceptable Use Policy\r\n\r\nAll employees must use company systems in accordance with this Acceptable Use\r\nPolicy. The policy applies to laptops, mobile devices, and any cloud services\r\nprovisioned by IT.\r\n\r\nProhibited activities include sharing credentials, installing unapproved\r\nsoftware, and storing customer data on personal devices. Violations may result\r\nin disciplinary action up to and including termination.\r\n\r\nEmployees should report suspected violations to the security team within 24\r\nhours of discovery.",
+        "IntraMind Q4 2024 Earnings Summary\r\n\r\nTotal revenue for Q4 2024 was 12.4 million dollars, up 18 percent year over year.\r\nOperating expenses came in at 8.1 million dollars. Net income was 3.2 million\r\ndollars, exceeding the analyst consensus of 2.9 million dollars.\r\n\r\nThe North America region contributed 7.5 million dollars in revenue, while EMEA\r\ncontributed 3.1 million dollars and APAC contributed 1.8 million dollars.\r\n\r\nThe board of directors approved a quarterly dividend of 0.15 dollars per share,\r\npayable on March 15, 2025."
+      ],
+      "success": true
+    }
+  ]
+}
