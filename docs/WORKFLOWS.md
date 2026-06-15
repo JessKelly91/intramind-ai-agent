@@ -63,6 +63,8 @@ graph TD
     style ERROR fill:#ffebee
 ```
 
+Prompts for `classify_query`, `complex_search`, and `synthesize_results` are resolved through `src/prompts/client.py`. When `PROMPT_REGISTRY_URL` is configured, the client fetches the active label from Prompt Registry with a TTL cache; otherwise, or on any registry error, it falls back to the baked-in `src/prompts/registry.py` prompt. Search workflow spans annotate `prompt.id`, `prompt.version`, `prompt.hash`, `prompt.label`, and `prompt.source` for Phoenix.
+
 ### State Definition
 
 ```python
@@ -98,17 +100,11 @@ async def classify_query(state: SearchWorkflowState) -> SearchWorkflowState:
     """Classify the query complexity."""
     query = state["user_query"]
     router_llm = get_router_llm()  # Ollama (free)
-    
-    system_prompt = """You are a query classifier.
-    Classify as 'simple' or 'complex'.
-    
-    Simple: Direct fact lookups, single-concept searches
-    Complex: Multi-part questions, comparative queries, aggregation
-    
-    Respond with ONLY 'simple' or 'complex'."""
+    prompt = get_prompt("query_classifier")
+    annotate_span(prompt)
     
     response = await router_llm.ainvoke([
-        SystemMessage(content=system_prompt),
+        SystemMessage(content=prompt.template),
         HumanMessage(content=f"Classify: {query}")
     ])
     
@@ -212,18 +208,11 @@ async def complex_search(state: SearchWorkflowState) -> SearchWorkflowState:
     """Complex search with query expansion."""
     query = state["user_query"]
     router_llm = get_router_llm()
-    
-    # Generate expanded queries
-    system_prompt = """You are a query expansion expert.
-    Generate 2-3 related search queries for different aspects.
-    
-    Format:
-    1. [first query]
-    2. [second query]
-    3. [third query]"""
+    prompt = get_prompt("query_expansion")
+    annotate_span(prompt)
     
     response = await router_llm.ainvoke([
-        SystemMessage(content=system_prompt),
+        SystemMessage(content=prompt.template),
         HumanMessage(content=f"Expand: {query}")
     ])
     
@@ -324,13 +313,11 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
     
     context = "\n".join(context_parts)
     
-    system_prompt = """You are a helpful assistant.
-    Answer questions based on provided documents.
-    Be concise and accurate.
-    Cite document numbers (e.g., "According to Document 1...")."""
+    prompt = get_prompt("result_synthesis")
+    annotate_span(prompt)
     
     response = await primary_llm.ainvoke([
-        SystemMessage(content=system_prompt),
+        SystemMessage(content=prompt.template),
         HumanMessage(content=f"Question: {query}\n\nDocuments:\n{context}\n\nAnswer:")
     ])
     
@@ -348,6 +335,7 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
 - **Citation Support**: Tracks document IDs used in answer
 - **Empty Result Handling**: Graceful message if no results found
 - **Configurable LLM**: Can use Ollama (free) or cloud LLM (quality)
+- **Runtime Prompt Governance**: Uses Prompt Registry when configured, with baked-in fallback and Phoenix span attributes
 
 ---
 
@@ -1090,7 +1078,7 @@ def test_route_after_classification():
 - **Async/Await**: Non-blocking I/O
 - **Parallel Execution**: Where possible (complex search)
 - **Context Limits**: Truncate long content
-- **Caching**: Consider for repeated queries
+- **Prompt Caching**: Prompt Registry responses are cached by prompt ID and label for `PROMPT_REGISTRY_CACHE_TTL`
 
 ---
 
@@ -1118,10 +1106,11 @@ The workflow graph can be visualized and exported for documentation or debugging
 - **LangChain Tools**: https://python.langchain.com/docs/modules/tools/
 - **State Machines**: https://en.wikipedia.org/wiki/Finite-state_machine
 - **Testing Guide**: `tests/test_search_workflow.py`, `tests/test_ingestion_workflow.py`
+- **Prompt Registry Tests**: `tests/test_prompt_registry.py`
 
 ---
 
-**Last Updated**: November 4, 2025  
+**Last Updated**: June 15, 2026  
 **Version**: 1.0.0  
 **Author**: IntraMind Team
 
