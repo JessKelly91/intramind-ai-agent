@@ -221,6 +221,13 @@ class Settings(BaseSettings):
         default=True,
         description="Detect and redact PII during ingestion before chunking",
     )
+    pii_redaction_required: bool = Field(
+        default=False,
+        description=(
+            "If True, ingestion fails closed when PII redaction is disabled, "
+            "unavailable, or errors."
+        ),
+    )
     pii_entities: list[str] = Field(
         default_factory=lambda: [
             "PERSON",
@@ -242,6 +249,13 @@ class Settings(BaseSettings):
     enable_safety_guard: bool = Field(
         default=True,
         description="Run Llama Guard on synthesized responses before returning",
+    )
+    safety_guard_required: bool = Field(
+        default=False,
+        description=(
+            "If True, search responses are blocked when the safety guard is "
+            "disabled, unavailable, malformed, or errors."
+        ),
     )
     safety_guard_model: str = Field(
         default="llama-guard3",

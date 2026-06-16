@@ -184,8 +184,9 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
     raw PII ever lands in Weaviate. Findings (type + offsets, no values)
     round-trip via document_metadata for auditability.
 
-    If `settings.enable_pii_redaction` is False or Presidio is unavailable,
-    this node is a pass-through and routes straight to chunk_content.
+    In permissive mode, disabled/unavailable redaction is a pass-through with
+    audit metadata. In required mode, disabled/unavailable redaction fails
+    closed so raw content is not stored.
     """
     logger.info("Node: redact_pii")
 
@@ -193,6 +194,22 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
     base_metadata: dict[str, Any] = state.get("document_metadata", {})
 
     if not settings.enable_pii_redaction:
+        if settings.pii_redaction_required:
+            error_msg = "PII redaction is required but disabled"
+            logger.error(error_msg)
+            return {
+                **state,
+                "current_step": "redact_pii",
+                "error": error_msg,
+                "next_step": "handle_error",
+                "document_metadata": {
+                    **base_metadata,
+                    "pii_redaction_applied": False,
+                    "pii_redaction_required": True,
+                    "pii_redaction_skipped_reason": "redaction_disabled",
+                    "pii_findings": base_metadata.get("pii_findings", []),
+                },
+            }
         logger.info("PII redaction disabled by settings - skipping")
         return {
             **state,
@@ -201,6 +218,8 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
             "document_metadata": {
                 **base_metadata,
                 "pii_redaction_applied": False,
+                "pii_redaction_required": False,
+                "pii_redaction_skipped_reason": "redaction_disabled",
                 "pii_findings": base_metadata.get("pii_findings", []),
             },
         }
@@ -212,6 +231,22 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
         )
 
         if not redactor.available:
+            if settings.pii_redaction_required:
+                error_msg = "PII redactor unavailable while redaction is required"
+                logger.error(error_msg)
+                return {
+                    **state,
+                    "current_step": "redact_pii",
+                    "error": error_msg,
+                    "next_step": "handle_error",
+                    "document_metadata": {
+                        **base_metadata,
+                        "pii_redaction_applied": False,
+                        "pii_redaction_required": True,
+                        "pii_redaction_skipped_reason": "redactor_unavailable",
+                        "pii_findings": base_metadata.get("pii_findings", []),
+                    },
+                }
             logger.warning(
                 "PII redactor unavailable (Presidio/spaCy not installed) - "
                 "passing content through unredacted"
@@ -223,6 +258,7 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
                 "document_metadata": {
                     **base_metadata,
                     "pii_redaction_applied": False,
+                    "pii_redaction_required": False,
                     "pii_redaction_skipped_reason": "redactor_unavailable",
                     "pii_findings": base_metadata.get("pii_findings", []),
                 },
@@ -249,6 +285,7 @@ async def redact_pii(state: IngestionWorkflowState) -> IngestionWorkflowState:
             "document_metadata": {
                 **base_metadata,
                 "pii_redaction_applied": True,
+                "pii_redaction_required": settings.pii_redaction_required,
                 "pii_redaction_timestamp": datetime.now(timezone.utc).isoformat(),
                 "pii_findings": all_findings,
                 "pii_findings_count": len(all_findings),
