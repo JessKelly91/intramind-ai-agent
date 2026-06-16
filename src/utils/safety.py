@@ -35,11 +35,15 @@ class SafetyResult:
         categories: Llama Guard violation categories (e.g. "S1", "S5") if any.
         raw_verdict: Raw model output (kept for debugging, never returned to
             the user along with the flagged response).
+        unavailable: True when the classifier could not produce a reliable
+            verdict because dependencies or infrastructure were unavailable.
     """
 
     is_safe: bool
     categories: list[str] = field(default_factory=list)
     raw_verdict: str = ""
+    unavailable: bool = False
+    error_reason: str | None = None
 
     def to_metadata(self, checked_at: Optional[str] = None) -> dict[str, Any]:
         """Convert to a JSON-safe dict for state.safety_flag.
@@ -50,6 +54,8 @@ class SafetyResult:
             "flagged": not self.is_safe,
             "categories": list(self.categories),
             "checked_at": checked_at,
+            "classifier_unavailable": self.unavailable,
+            "error_reason": self.error_reason,
         }
 
 
@@ -57,10 +63,16 @@ def _parse_llama_guard_output(text: str) -> SafetyResult:
     """Parse Llama Guard's plain-text verdict into a SafetyResult."""
     raw = (text or "").strip()
     if not raw:
-        # Default to safe on empty output rather than blocking everything,
-        # but log it loudly - this means the classifier misbehaved.
+        # Default to safe in permissive mode rather than blocking everything,
+        # but mark it as unavailable so required mode can fail closed.
         logger.warning("Llama Guard returned empty output - defaulting to safe")
-        return SafetyResult(is_safe=True, raw_verdict=raw)
+        return SafetyResult(
+            is_safe=True,
+            categories=["EMPTY_VERDICT"],
+            raw_verdict=raw,
+            unavailable=True,
+            error_reason="empty_verdict",
+        )
 
     first_line = raw.splitlines()[0].strip().lower()
     if first_line == "safe":
@@ -100,9 +112,9 @@ async def classify_output(
 
     Returns:
         SafetyResult. On unrecoverable errors (Ollama unreachable, package
-        missing) returns ``is_safe=True`` with categories=["CLASSIFIER_UNAVAILABLE"]
-        so we don't accidentally block all traffic in dev/CI without Ollama.
-        Production deployments should monitor for that category.
+        missing) returns ``is_safe=True`` in permissive mode metadata with
+        categories=["CLASSIFIER_UNAVAILABLE"] and ``unavailable=True``. Required
+        mode in the workflow uses this metadata to fail closed.
     """
     try:
         from langchain_core.messages import HumanMessage
@@ -115,6 +127,8 @@ async def classify_output(
             is_safe=True,
             categories=["CLASSIFIER_UNAVAILABLE"],
             raw_verdict="<langchain-ollama not installed>",
+            unavailable=True,
+            error_reason="dependency_missing",
         )
 
     kwargs: dict[str, Any] = {"model": model, "temperature": 0.0}
@@ -136,10 +150,12 @@ async def classify_output(
         result = await guard.ainvoke(guard_messages)
         verdict_text = getattr(result, "content", "") or ""
         return _parse_llama_guard_output(verdict_text)
-    except Exception as exc:  # noqa: BLE001 - we want to fail open on infra errors
+    except Exception as exc:  # noqa: BLE001 - workflow decides fail-open/closed
         logger.warning("Safety classifier call failed: %s", exc)
         return SafetyResult(
             is_safe=True,
             categories=["CLASSIFIER_UNAVAILABLE"],
             raw_verdict=f"<error: {exc.__class__.__name__}>",
+            unavailable=True,
+            error_reason=exc.__class__.__name__,
         )

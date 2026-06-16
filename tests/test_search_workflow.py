@@ -13,11 +13,14 @@ from workflows.search_workflow import (
     simple_search,
     complex_search,
     synthesize_results,
+    safety_check,
+    handle_unsafe_response,
     handle_error,
     route_after_classification,
     route_after_search,
     create_search_workflow,
 )
+from utils.safety import SafetyResult
 
 search_workflow_module = importlib.import_module("workflows.search_workflow")
 
@@ -25,6 +28,34 @@ search_workflow_module = importlib.import_module("workflows.search_workflow")
 # ============================================================================
 # UNIT TESTS - Individual Node Functions
 # ============================================================================
+
+
+def _safety_state() -> SearchWorkflowState:
+    """Create a minimal state for safety-check tests."""
+    return {
+        "messages": [HumanMessage(content="test")],
+        "user_query": "test query",
+        "current_step": "synthesize_results",
+        "next_step": "safety_check",
+        "workflow_complete": False,
+        "search_strategy": None,
+        "search_query": None,
+        "search_results": [],
+        "num_results": 10,
+        "min_score": 0.0,
+        "document_path": None,
+        "document_type": None,
+        "extracted_content": None,
+        "document_metadata": {},
+        "response": "A synthesized response",
+        "citations": ["doc1"],
+        "error": None,
+        "retry_count": 0,
+        "query_complexity": "simple",
+        "expanded_queries": None,
+        "aggregated_results": None,
+        "synthesis_results": [],
+    }
 
 
 @pytest.mark.asyncio
@@ -566,6 +597,94 @@ async def test_synthesize_results_with_no_documents():
     assert result["response"] == "I couldn't find any relevant documents for your query."
     assert result["citations"] == []
     assert result["synthesis_results"] == []
+
+
+@pytest.mark.asyncio
+async def test_safety_check_permissive_allows_when_guard_disabled(monkeypatch):
+    """Permissive mode should allow local/dev responses when guard is disabled."""
+    monkeypatch.setattr(search_workflow_module.settings, "enable_safety_guard", False)
+    monkeypatch.setattr(search_workflow_module.settings, "safety_guard_required", False)
+
+    result = await safety_check(_safety_state())
+
+    assert result["workflow_complete"] is True
+    assert result["next_step"] is None
+    assert result["safety_flag"]["flagged"] is False
+    assert result["safety_flag"]["safety_guard_required"] is False
+
+
+@pytest.mark.asyncio
+async def test_safety_check_required_blocks_when_guard_disabled(monkeypatch):
+    """Required mode should block when the guard is disabled."""
+    monkeypatch.setattr(search_workflow_module.settings, "enable_safety_guard", False)
+    monkeypatch.setattr(search_workflow_module.settings, "safety_guard_required", True)
+
+    result = await safety_check(_safety_state())
+
+    assert result["next_step"] == "handle_unsafe_response"
+    assert result["safety_flag"]["flagged"] is True
+    assert result["safety_flag"]["categories"] == ["SAFETY_GUARD_DISABLED"]
+    assert result["safety_flag"]["classifier_unavailable"] is True
+
+
+@pytest.mark.asyncio
+async def test_safety_check_permissive_allows_classifier_unavailable(monkeypatch):
+    """Permissive mode records unavailable guard metadata without blocking."""
+    monkeypatch.setattr(search_workflow_module.settings, "enable_safety_guard", True)
+    monkeypatch.setattr(search_workflow_module.settings, "safety_guard_required", False)
+    unavailable = SafetyResult(
+        is_safe=True,
+        categories=["CLASSIFIER_UNAVAILABLE"],
+        raw_verdict="<error>",
+        unavailable=True,
+        error_reason="TimeoutError",
+    )
+
+    with patch(
+        "workflows.search_workflow.classify_output",
+        AsyncMock(return_value=unavailable),
+    ):
+        result = await safety_check(_safety_state())
+
+    assert result["workflow_complete"] is True
+    assert result["next_step"] is None
+    assert result["safety_flag"]["flagged"] is False
+    assert result["safety_flag"]["classifier_unavailable"] is True
+    assert result["safety_flag"]["error_reason"] == "TimeoutError"
+
+
+@pytest.mark.asyncio
+async def test_safety_check_required_blocks_classifier_unavailable(monkeypatch):
+    """Required mode should route unavailable classifier output to the hard block."""
+    monkeypatch.setattr(search_workflow_module.settings, "enable_safety_guard", True)
+    monkeypatch.setattr(search_workflow_module.settings, "safety_guard_required", True)
+    monkeypatch.setattr(
+        search_workflow_module.settings,
+        "safety_fallback_message",
+        "Blocked by safety policy.",
+    )
+    unavailable = SafetyResult(
+        is_safe=True,
+        categories=["CLASSIFIER_UNAVAILABLE"],
+        raw_verdict="<error>",
+        unavailable=True,
+        error_reason="TimeoutError",
+    )
+
+    with patch(
+        "workflows.search_workflow.classify_output",
+        AsyncMock(return_value=unavailable),
+    ):
+        blocked = await safety_check(_safety_state())
+
+    assert blocked["next_step"] == "handle_unsafe_response"
+    assert blocked["safety_flag"]["flagged"] is True
+    assert blocked["safety_flag"]["classifier_unavailable"] is True
+
+    final = await handle_unsafe_response(blocked)
+    assert final["workflow_complete"] is True
+    assert final["response"] == "Blocked by safety policy."
+    assert final["citations"] == []
 
 
 @pytest.mark.asyncio

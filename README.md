@@ -819,6 +819,19 @@ This project implements a **fully free, open-source Responsible AI stack** (the 
 | Drift monitoring | Evidently AI | `scripts/drift_report.py` + scheduled GitHub Action |
 | Governance docs | Model + dataset cards | `docs/cards/` |
 
+### RAI Enforcement Modes
+
+Local development defaults are permissive: if Presidio/spaCy or Llama Guard are unavailable, the workflow records metadata and continues so contributors are not blocked by optional local services.
+
+Production deployments should fail closed:
+
+```env
+PII_REDACTION_REQUIRED=true
+SAFETY_GUARD_REQUIRED=true
+```
+
+With `PII_REDACTION_REQUIRED=true`, ingestion fails before chunk storage if redaction is disabled, unavailable, or errors. With `SAFETY_GUARD_REQUIRED=true`, search responses are blocked with the configured safety fallback when Llama Guard is disabled, unavailable, returns an empty verdict, or errors.
+
 ### RAG Eval Outputs
 
 `tests/eval/ragas_eval.py` writes `tests/eval/results/latest.json` with two complementary metric groups:
@@ -842,7 +855,7 @@ Why this specific policy:
 
 Trade-off (accepted): this approach is **irreversible**. Once redacted on ingest, the original PII cannot be recovered. Future role-based unmasking would require a separate originals store with independent permissions and is explicitly out of scope here.
 
-To disable redaction (e.g. for a fully synthetic test corpus), set `ENABLE_PII_REDACTION=false`.
+To disable redaction (e.g. for a fully synthetic test corpus), set `ENABLE_PII_REDACTION=false`. Do not combine that with `PII_REDACTION_REQUIRED=true`; required mode intentionally fails that contradictory configuration.
 
 ## 🔮 Future Enhancements
 

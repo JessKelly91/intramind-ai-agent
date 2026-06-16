@@ -1,5 +1,6 @@
 """Comprehensive tests for document ingestion workflow."""
 
+import importlib
 import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,6 +10,7 @@ from agent.main import IntraMindAgent
 from workflows.ingestion_workflow import (
     validate_document,
     extract_content,
+    redact_pii,
     chunk_content,
     store_chunks,
     handle_error,
@@ -16,6 +18,8 @@ from workflows.ingestion_workflow import (
     MAX_FILE_SIZE_BYTES,
 )
 from models.state import IngestionWorkflowState
+
+ingestion_workflow_module = importlib.import_module("workflows.ingestion_workflow")
 
 
 # ============================================================================
@@ -232,11 +236,104 @@ async def test_extract_text_file(base_state: IngestionWorkflowState, sample_text
     result = await extract_content(state)
     
     assert result["error"] is None
-    assert result["next_step"] == "chunk_content"
+    assert result["next_step"] == "redact_pii"
     assert result["extracted_content"] is not None
     assert "test document" in result["extracted_content"]
     assert result["document_metadata"]["content_length"] > 0
     assert "extraction_timestamp" in result["document_metadata"]
+
+
+@pytest.mark.asyncio
+async def test_redact_pii_permissive_passes_when_redactor_unavailable(
+    base_state: IngestionWorkflowState, monkeypatch
+):
+    """Permissive mode should preserve local/dev ingestion when Presidio is unavailable."""
+    monkeypatch.setattr(ingestion_workflow_module.settings, "enable_pii_redaction", True)
+    monkeypatch.setattr(
+        ingestion_workflow_module.settings, "pii_redaction_required", False
+    )
+    mock_redactor = MagicMock()
+    mock_redactor.available = False
+    state = {
+        **base_state,
+        "extracted_content": "Contact Jane at jane@example.com",
+        "document_metadata": {},
+    }
+
+    with patch(
+        "workflows.ingestion_workflow.get_default_redactor",
+        return_value=mock_redactor,
+    ):
+        result = await redact_pii(state)
+
+    assert result["next_step"] == "chunk_content"
+    assert result["error"] is None
+    assert result["extracted_content"] == "Contact Jane at jane@example.com"
+    assert result["document_metadata"]["pii_redaction_applied"] is False
+    assert result["document_metadata"]["pii_redaction_required"] is False
+    assert (
+        result["document_metadata"]["pii_redaction_skipped_reason"]
+        == "redactor_unavailable"
+    )
+
+
+@pytest.mark.asyncio
+async def test_redact_pii_required_blocks_when_redactor_unavailable(
+    base_state: IngestionWorkflowState, monkeypatch
+):
+    """Required mode should fail closed instead of storing unredacted content."""
+    monkeypatch.setattr(ingestion_workflow_module.settings, "enable_pii_redaction", True)
+    monkeypatch.setattr(
+        ingestion_workflow_module.settings, "pii_redaction_required", True
+    )
+    mock_redactor = MagicMock()
+    mock_redactor.available = False
+    state = {
+        **base_state,
+        "extracted_content": "Contact Jane at jane@example.com",
+        "document_metadata": {},
+    }
+
+    with patch(
+        "workflows.ingestion_workflow.get_default_redactor",
+        return_value=mock_redactor,
+    ):
+        result = await redact_pii(state)
+
+    assert result["next_step"] == "handle_error"
+    assert "PII redactor unavailable" in result["error"]
+    assert result["document_metadata"]["pii_redaction_applied"] is False
+    assert result["document_metadata"]["pii_redaction_required"] is True
+    assert (
+        result["document_metadata"]["pii_redaction_skipped_reason"]
+        == "redactor_unavailable"
+    )
+
+
+@pytest.mark.asyncio
+async def test_redact_pii_required_blocks_when_redaction_disabled(
+    base_state: IngestionWorkflowState, monkeypatch
+):
+    """Contradictory production config should fail before chunk storage."""
+    monkeypatch.setattr(ingestion_workflow_module.settings, "enable_pii_redaction", False)
+    monkeypatch.setattr(
+        ingestion_workflow_module.settings, "pii_redaction_required", True
+    )
+    state = {
+        **base_state,
+        "extracted_content": "Contact Jane at jane@example.com",
+        "document_metadata": {},
+    }
+
+    result = await redact_pii(state)
+
+    assert result["next_step"] == "handle_error"
+    assert result["error"] == "PII redaction is required but disabled"
+    assert result["document_metadata"]["pii_redaction_required"] is True
+    assert (
+        result["document_metadata"]["pii_redaction_skipped_reason"]
+        == "redaction_disabled"
+    )
 
 
 @pytest.mark.asyncio

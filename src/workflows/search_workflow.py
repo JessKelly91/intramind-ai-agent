@@ -346,11 +346,34 @@ async def safety_check(state: SearchWorkflowState) -> SearchWorkflowState:
     logger.info("Node: safety_check")
 
     # Allow opting out via settings (e.g. for tests or environments without Ollama).
+    # In required mode this fails closed because unclassified output must not be
+    # returned from production paths.
     if not settings.enable_safety_guard:
+        if settings.safety_guard_required:
+            return {
+                **state,
+                "current_step": "safety_check",
+                "safety_flag": {
+                    "flagged": True,
+                    "categories": ["SAFETY_GUARD_DISABLED"],
+                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                    "classifier_unavailable": True,
+                    "error_reason": "safety_guard_disabled",
+                    "safety_guard_required": True,
+                },
+                "next_step": "handle_unsafe_response",
+            }
         return {
             **state,
             "current_step": "safety_check",
-            "safety_flag": {"flagged": False, "categories": [], "checked_at": None},
+            "safety_flag": {
+                "flagged": False,
+                "categories": [],
+                "checked_at": None,
+                "classifier_unavailable": False,
+                "error_reason": None,
+                "safety_guard_required": False,
+            },
             "next_step": None,
             "workflow_complete": True,
         }
@@ -361,7 +384,14 @@ async def safety_check(state: SearchWorkflowState) -> SearchWorkflowState:
         return {
             **state,
             "current_step": "safety_check",
-            "safety_flag": {"flagged": False, "categories": [], "checked_at": None},
+            "safety_flag": {
+                "flagged": False,
+                "categories": [],
+                "checked_at": None,
+                "classifier_unavailable": False,
+                "error_reason": None,
+                "safety_guard_required": settings.safety_guard_required,
+            },
             "next_step": None,
             "workflow_complete": True,
         }
@@ -374,6 +404,24 @@ async def safety_check(state: SearchWorkflowState) -> SearchWorkflowState:
 
     checked_at = datetime.now(timezone.utc).isoformat()
     flag_meta = result.to_metadata(checked_at=checked_at)
+    flag_meta["safety_guard_required"] = settings.safety_guard_required
+
+    if settings.safety_guard_required and result.unavailable:
+        logger.warning(
+            "Safety guard unavailable in required mode (reason=%s) - hard-blocking",
+            result.error_reason,
+        )
+        record_safety_flag(result.categories or ["CLASSIFIER_UNAVAILABLE"])
+        return {
+            **state,
+            "current_step": "safety_check",
+            "safety_flag": {
+                **flag_meta,
+                "flagged": True,
+                "categories": result.categories or ["CLASSIFIER_UNAVAILABLE"],
+            },
+            "next_step": "handle_unsafe_response",
+        }
 
     if result.is_safe:
         return {
