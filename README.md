@@ -819,6 +819,17 @@ This project implements a **fully free, open-source Responsible AI stack** (the 
 | Drift monitoring | Evidently AI | `scripts/drift_report.py` + scheduled GitHub Action |
 | Governance docs | Model + dataset cards | `docs/cards/` |
 
+### RAG Eval Outputs
+
+`tests/eval/ragas_eval.py` writes `tests/eval/results/latest.json` with two complementary metric groups:
+
+- **Ragas answer-quality metrics**: `faithfulness`, `answer_relevancy`, `context_precision`, and `context_recall`.
+- **Deterministic retrieval metrics**: `hit_at_1`, `hit_at_3`, `mrr`, and a per-question miss list based on `expected_source` in `tests/eval/data/golden_qa.jsonl`.
+
+The output also records eval parameters (`collection`, `num_results`, `min_score`, vectorizer mode, prompt label, and prompt versions) so baseline changes can be traced to either retrieval settings or prompt changes.
+
+Ragas metrics are written as strict JSON: unparseable local-judge outputs are converted to `null` and summarized under `ragas_quality.nan_counts` plus `ragas_quality.parse_failure_rate`. `RAGAS_MAX_PARSE_FAILURE_RATE` defaults to `0.2`; runs above that tolerance are treated as failed for Prompt Registry posting/promotion decisions even while threshold tests remain warning-only.
+
 ### PII Policy: Redact-on-Ingest with Tokenized Pseudonyms
 
 PII detected during document ingestion is replaced with **stable, type-tagged tokens** (e.g. `<PERSON_1>`, `<EMAIL_ADDRESS_2>`) before content is chunked and stored. Raw PII never enters Weaviate.

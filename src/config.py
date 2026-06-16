@@ -178,6 +178,13 @@ class Settings(BaseSettings):
             "Flip to True (or set RAGAS_ENFORCE_THRESHOLDS=true) to fail CI."
         ),
     )
+    ragas_max_parse_failure_rate: float = Field(
+        default=0.2,
+        description=(
+            "Maximum fraction of Ragas metric cells allowed to be NaN/null "
+            "before the eval is considered failed."
+        ),
+    )
     ragas_threshold_faithfulness: float = Field(
         default=0.7, description="Min faithfulness score before threshold test fails"
     )

@@ -20,6 +20,7 @@ import datetime as dt
 import hashlib
 import json
 import logging
+import math
 import os
 import sys
 from pathlib import Path
@@ -38,6 +39,8 @@ LATEST_RESULTS = RESULTS_DIR / "latest.json"
 
 DEFAULT_COLLECTION = "eval_corpus"
 DEFAULT_NUM_RESULTS = 5
+DEFAULT_MIN_SCORE = 0.0
+DEFAULT_MAX_PARSE_FAILURE_RATE = 0.2
 
 
 def _load_golden() -> list[dict[str, Any]]:
@@ -95,8 +98,99 @@ async def _seed_corpus(collection: str) -> None:
         )
 
 
+def _source_from_result(result: dict[str, Any]) -> str | None:
+    """Best-effort source extraction from a retrieved result."""
+    metadata = result.get("metadata") or {}
+    for key in ("source", "filename", "file_name", "source_file"):
+        value = metadata.get(key)
+        if value:
+            return Path(str(value)).name
+    return None
+
+
+def _retrieved_contexts(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize retrieved result metadata for deterministic retrieval metrics."""
+    contexts: list[dict[str, Any]] = []
+    for rank, result in enumerate(results, start=1):
+        content = result.get("content", "")
+        if not content:
+            continue
+        contexts.append(
+            {
+                "rank": rank,
+                "id": result.get("id") or result.get("document_id"),
+                "source": _source_from_result(result),
+                "score": result.get("score"),
+                "content": content,
+            }
+        )
+    return contexts
+
+
+def _source_matches(expected: str | None, actual: str | None) -> bool:
+    """Compare source names robustly while keeping the metric deterministic."""
+    if not expected or not actual:
+        return False
+    return Path(str(expected)).name.lower() == Path(str(actual)).name.lower()
+
+
+def _retrieval_rank(row: dict[str, Any]) -> int | None:
+    """Return 1-based rank for the expected source, or None when not found."""
+    expected_source = row.get("expected_source")
+    for context in row.get("retrieved_contexts", []):
+        if _source_matches(expected_source, context.get("source")):
+            return int(context["rank"])
+    return None
+
+
+def _row_retrieval_metrics(row: dict[str, Any]) -> dict[str, Any]:
+    """Compute deterministic source-level retrieval metrics for one eval row."""
+    rank = _retrieval_rank(row)
+    return {
+        "expected_source": row.get("expected_source"),
+        "retrieved_sources": [
+            context.get("source") for context in row.get("retrieved_contexts", [])
+        ],
+        "expected_source_rank": rank,
+        "hit_at_1": bool(rank is not None and rank <= 1),
+        "hit_at_3": bool(rank is not None and rank <= 3),
+        "mrr": 0.0 if rank is None else 1.0 / rank,
+    }
+
+
+def _score_retrieval(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate deterministic source-level retrieval metrics."""
+    if not rows:
+        return {
+            "hit_at_1": 0.0,
+            "hit_at_3": 0.0,
+            "mrr": 0.0,
+            "misses": [],
+        }
+
+    row_metrics = [_row_retrieval_metrics(row) for row in rows]
+    total = len(row_metrics)
+    misses = [
+        {
+            "id": row.get("id"),
+            "question": row.get("question"),
+            "expected_source": metrics["expected_source"],
+            "retrieved_sources": metrics["retrieved_sources"],
+        }
+        for row, metrics in zip(rows, row_metrics, strict=True)
+        if metrics["expected_source"] and metrics["expected_source_rank"] is None
+    ]
+
+    return {
+        "hit_at_1": sum(1 for metric in row_metrics if metric["hit_at_1"]) / total,
+        "hit_at_3": sum(1 for metric in row_metrics if metric["hit_at_3"]) / total,
+        "mrr": sum(float(metric["mrr"]) for metric in row_metrics) / total,
+        "misses": misses,
+    }
+
+
 async def _run_agent(
-    entries: list[dict[str, Any]], collection: str
+    entries: list[dict[str, Any]], collection: str, num_results: int, min_score: float
 ) -> list[dict[str, Any]]:
     """Run the agent on every golden question and capture context + answer."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -109,22 +203,24 @@ async def _run_agent(
         result = await agent.search(
             query=question,
             collection_name=collection,
-            num_results=DEFAULT_NUM_RESULTS,
-            min_score=0.0,
+            num_results=num_results,
+            min_score=min_score,
         )
-        contexts = [
-            r.get("content", "") for r in result.get("results", []) if r.get("content")
-        ]
+        retrieved_contexts = _retrieved_contexts(result.get("results", []))
+        contexts = [context["content"] for context in retrieved_contexts]
+        row = {
+            "id": entry.get("id", hashlib.sha1(question.encode()).hexdigest()[:8]),
+            "question": question,
+            "ground_truth": entry.get("ground_truth", ""),
+            "expected_source": entry.get("expected_source"),
+            "answer": result.get("response", ""),
+            "contexts": contexts,
+            "retrieved_contexts": retrieved_contexts,
+            "success": bool(result.get("success")),
+        }
+        row["retrieval_metrics"] = _row_retrieval_metrics(row)
         rows.append(
-            {
-                "id": entry.get("id", hashlib.sha1(question.encode()).hexdigest()[:8]),
-                "question": question,
-                "ground_truth": entry.get("ground_truth", ""),
-                "expected_source": entry.get("expected_source"),
-                "answer": result.get("response", ""),
-                "contexts": contexts,
-                "success": bool(result.get("success")),
-            }
+            row
         )
     return rows
 
@@ -135,6 +231,63 @@ _METRIC_NAMES = (
     "context_precision",
     "context_recall",
 )
+
+
+def _invalid_number(value: Any) -> bool:
+    """Return True for floats that cannot be represented in strict JSON."""
+    return isinstance(value, float) and (math.isnan(value) or math.isinf(value))
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively convert NaN/Infinity to None for strict JSON payloads."""
+    if _invalid_number(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+def _metric_nan_counts(per_row: list[dict[str, Any]]) -> dict[str, int]:
+    """Count Ragas metric cells that failed to parse and became NaN."""
+    return {
+        metric: sum(1 for row in per_row if _invalid_number(row.get(metric)))
+        for metric in _METRIC_NAMES
+    }
+
+
+def _max_parse_failure_rate() -> float:
+    """Maximum tolerated Ragas metric parse-failure rate."""
+    raw = os.environ.get("RAGAS_MAX_PARSE_FAILURE_RATE")
+    if raw is not None:
+        return float(raw)
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    try:
+        from config import settings  # type: ignore[import]
+
+        return float(settings.ragas_max_parse_failure_rate)
+    except Exception:
+        return DEFAULT_MAX_PARSE_FAILURE_RATE
+
+
+def _ragas_quality(per_row: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize judge parse reliability for a Ragas run."""
+    nan_counts = _metric_nan_counts(per_row)
+    total_metric_cells = len(per_row) * len(_METRIC_NAMES)
+    parse_failure_count = sum(nan_counts.values())
+    parse_failure_rate = (
+        0.0 if total_metric_cells == 0 else parse_failure_count / total_metric_cells
+    )
+    max_parse_failure_rate = _max_parse_failure_rate()
+    return {
+        "nan_counts": nan_counts,
+        "parse_failure_count": parse_failure_count,
+        "total_metric_cells": total_metric_cells,
+        "parse_failure_rate": parse_failure_rate,
+        "max_parse_failure_rate": max_parse_failure_rate,
+        "passed": parse_failure_rate <= max_parse_failure_rate,
+    }
 
 
 def _install_ragas_compat_stubs() -> None:
@@ -306,14 +459,24 @@ def _metric_threshold(metric: str) -> float:
         return 0.7
 
 
-def _eval_passed(aggregate: dict[str, Any]) -> bool:
+def _eval_passed(
+    aggregate: dict[str, Any], ragas_quality: dict[str, Any] | None = None
+) -> bool:
     metrics = [
         "faithfulness",
         "answer_relevancy",
         "context_precision",
         "context_recall",
     ]
-    return all(float(aggregate.get(metric, 0.0)) >= _metric_threshold(metric) for metric in metrics)
+    if ragas_quality and not ragas_quality.get("passed", False):
+        return False
+    for metric in metrics:
+        value = aggregate.get(metric)
+        if value is None or _invalid_number(value):
+            return False
+        if float(value) < _metric_threshold(metric):
+            return False
+    return True
 
 
 def _post_prompt_registry_evals(payload: dict[str, Any]) -> None:
@@ -325,7 +488,9 @@ def _post_prompt_registry_evals(payload: dict[str, Any]) -> None:
     if not registry_url or not api_key or not prompt_versions:
         return
 
-    passed = _eval_passed(payload.get("aggregate", {}))
+    passed = _eval_passed(
+        payload.get("aggregate", {}), payload.get("ragas_quality", {})
+    )
     for prompt_id, prompt_version in prompt_versions.items():
         version = prompt_version.get("version")
         if not version:
@@ -353,23 +518,43 @@ def _post_prompt_registry_evals(payload: dict[str, Any]) -> None:
 
 
 def _write_results(
-    rows: list[dict[str, Any]], scores: dict[str, Any], judge_model: str
+    rows: list[dict[str, Any]],
+    scores: dict[str, Any],
+    judge_model: str,
+    collection: str,
+    num_results: int,
+    min_score: float,
 ) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     label = os.environ.get("PROMPT_REGISTRY_LABEL", "production")
+    retrieval = _score_retrieval(rows)
+    ragas_quality = _ragas_quality(scores["per_row"])
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "judge_model": judge_model,
         "num_questions": len(rows),
+        "eval_params": {
+            "collection": collection,
+            "num_results": num_results,
+            "min_score": min_score,
+            "prompt_registry_label": label,
+            "vectorizer_enabled": os.environ.get("VECTORIZER_ENABLED"),
+            "default_vectorizer": os.environ.get("DEFAULT_VECTORIZER"),
+        },
         # Records which prompt versions produced this baseline so score deltas
         # can be attributed to specific prompt changes.
         "prompt_versions": _active_prompt_versions(label),
+        "retrieval": retrieval,
+        "ragas_quality": ragas_quality,
         "aggregate": scores["aggregate"],
         "per_row": scores["per_row"],
         "raw_rows": rows,
     }
-    LATEST_RESULTS.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    _post_prompt_registry_evals(payload)
+    safe_payload = _json_safe(payload)
+    LATEST_RESULTS.write_text(
+        json.dumps(safe_payload, indent=2, allow_nan=False), encoding="utf-8"
+    )
+    _post_prompt_registry_evals(safe_payload)
     return LATEST_RESULTS
 
 
@@ -387,7 +572,7 @@ async def _gather_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     if not entries:
         raise RuntimeError("No golden Q&A entries found.")
 
-    return await _run_agent(entries, args.collection)
+    return await _run_agent(entries, args.collection, args.num_results, args.min_score)
 
 
 def main() -> int:
@@ -409,6 +594,18 @@ def main() -> int:
         help="Ollama model used as the LLM judge",
     )
     parser.add_argument(
+        "--num-results",
+        type=int,
+        default=int(os.environ.get("RAGAS_NUM_RESULTS", DEFAULT_NUM_RESULTS)),
+        help=f"Number of retrieved results per question (default {DEFAULT_NUM_RESULTS})",
+    )
+    parser.add_argument(
+        "--min-score",
+        type=float,
+        default=float(os.environ.get("RAGAS_MIN_SCORE", DEFAULT_MIN_SCORE)),
+        help=f"Minimum retrieval score threshold (default {DEFAULT_MIN_SCORE})",
+    )
+    parser.add_argument(
         "--log-level", default="INFO", help="Python logging level (default INFO)"
     )
     args = parser.parse_args()
@@ -428,12 +625,23 @@ def main() -> int:
 
     # Phase 2 (sync, OUTSIDE the event loop): score with Ragas and persist.
     scores = _score_with_ragas(rows, args.judge_model)
-    out_path = _write_results(rows, scores, args.judge_model)
+    out_path = _write_results(
+        rows,
+        scores,
+        args.judge_model,
+        args.collection,
+        args.num_results,
+        args.min_score,
+    )
 
     print(f"\nRagas evaluation complete. Results written to: {out_path}")
     print(f"\nAggregate scores (judge: {args.judge_model}):")
     for metric, value in scores["aggregate"].items():
         print(f"  {metric:<20} {value:.3f}")
+    retrieval = _score_retrieval(rows)
+    print("\nRetrieval source metrics:")
+    for metric in ("hit_at_1", "hit_at_3", "mrr"):
+        print(f"  {metric:<20} {retrieval[metric]:.3f}")
     return 0
 
 

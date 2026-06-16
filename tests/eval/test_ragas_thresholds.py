@@ -17,8 +17,10 @@ fully built out and just gated.
 from __future__ import annotations
 
 import json
+import math
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -74,8 +76,16 @@ def aggregate_scores() -> dict:
     return payload.get("aggregate", {})
 
 
-def _check(metric: str, score: float) -> None:
+def _check(metric: str, score: Any) -> None:
     threshold = _threshold(metric)
+    if score is None or (
+        isinstance(score, float) and (math.isnan(score) or math.isinf(score))
+    ):
+        msg = f"{metric}=null/unparseable below threshold {threshold:.3f}"
+        if _enforce():
+            pytest.fail(msg)
+        else:
+            pytest.xfail(f"warning-only: {msg}")
     if score >= threshold:
         return
     msg = f"{metric}={score:.3f} below threshold {threshold:.3f}"
