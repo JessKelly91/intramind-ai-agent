@@ -115,6 +115,21 @@ class Settings(BaseSettings):
         default=10,
         description="Default number of search results to return",
     )
+    synthesis_max_contexts: int = Field(
+        default=3,
+        description="Maximum number of retrieved chunks to include in synthesis context",
+    )
+    synthesis_context_chars: int = Field(
+        default=1200,
+        description="Maximum characters to include from each retrieved chunk during synthesis",
+    )
+    synthesis_score_gap: float = Field(
+        default=0.12,
+        description=(
+            "For direct factual queries, include additional contexts only when "
+            "their score is within this gap of the top result"
+        ),
+    )
 
     # Conversation Memory Settings
     enable_conversation_memory: bool = Field(

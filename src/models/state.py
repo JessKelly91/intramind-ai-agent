@@ -56,6 +56,7 @@ class SearchWorkflowState(AgentState):
     query_complexity: str | None  # "simple" | "complex"
     expanded_queries: list[str] | None
     aggregated_results: list[dict[str, Any]] | None
+    synthesis_results: list[dict[str, Any]] | None
     min_score: float  # Minimum similarity score threshold (0.0-1.0)
 
 

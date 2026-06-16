@@ -19,6 +19,48 @@ from utils.safety import classify_output
 logger = logging.getLogger(__name__)
 
 
+def _result_score(result: dict) -> float | None:
+    """Best-effort numeric score extraction from a search result."""
+    score = result.get("score")
+    if score is None:
+        return None
+    try:
+        return float(score)
+    except (TypeError, ValueError):
+        return None
+
+
+def _select_synthesis_results(results: list[dict], query_complexity: str | None) -> list[dict]:
+    """Select a compact context set for answer synthesis.
+
+    Direct factual queries should not force the LLM to reason over obvious
+    distractors. Keep the top hit, then include only close-scoring neighbors up
+    to the configured cap. Complex queries can use the top configured cap.
+    """
+    if not results:
+        return []
+
+    max_contexts = max(1, settings.synthesis_max_contexts)
+    if query_complexity == "complex":
+        return results[:max_contexts]
+
+    selected = [results[0]]
+    top_score = _result_score(results[0])
+    for result in results[1:]:
+        if len(selected) >= max_contexts:
+            break
+
+        score = _result_score(result)
+        if (
+            top_score is None
+            or score is None
+            or top_score - score <= settings.synthesis_score_gap
+        ):
+            selected.append(result)
+
+    return selected
+
+
 # Node Functions
 async def classify_query(state: SearchWorkflowState) -> SearchWorkflowState:
     """Classify the query complexity to determine search strategy.
@@ -230,17 +272,21 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
             "current_step": "synthesize_results",
             "response": "I couldn't find any relevant documents for your query.",
             "citations": [],
+            "synthesis_results": [],
             "next_step": "safety_check",
         }
 
     primary_llm = get_primary_llm()
 
-    # Prepare context from search results
+    # Prepare context from the strongest supporting search results.
     context_parts = []
     citations = []
+    selected_results = _select_synthesis_results(
+        results, state.get("query_complexity")
+    )
 
-    for i, result in enumerate(results[:5], 1):  # Use top 5 for context
-        content = result["content"][:500]  # Truncate long content
+    for i, result in enumerate(selected_results, 1):
+        content = result["content"][: settings.synthesis_context_chars]
         context_parts.append(f"[Document {i}]\n{content}\n")
         citations.append(result["id"])
 
@@ -270,7 +316,7 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
     # Add current query with document context
     messages.append(
         HumanMessage(
-            content=f"Question: {query}\n\nRelevant Documents:\n{context}\n\nPlease provide a comprehensive answer."
+            content=f"Question: {query}\n\nRelevant Documents:\n{context}\n\nPlease provide a direct, supported answer."
         )
     )
 
@@ -284,6 +330,7 @@ async def synthesize_results(state: SearchWorkflowState) -> SearchWorkflowState:
         "current_step": "synthesize_results",
         "response": answer,
         "citations": citations,
+        "synthesis_results": selected_results,
         "next_step": "safety_check",
     }
 

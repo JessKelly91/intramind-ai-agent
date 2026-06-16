@@ -104,6 +104,7 @@ class IntraMindAgent:
             "query_complexity": None,
             "expanded_queries": None,
             "aggregated_results": None,
+            "synthesis_results": None,
         }
 
         # Execute workflow with thread config for conversation memory
@@ -117,6 +118,7 @@ class IntraMindAgent:
                 "response": result.get("response"),
                 "citations": result.get("citations", []),
                 "results": result.get("search_results", []),
+                "synthesis_results": result.get("synthesis_results", []),
                 "complexity": result.get("query_complexity"),
                 "expanded_queries": result.get("expanded_queries"),
                 "thread_id": self.thread_id,
@@ -190,6 +192,7 @@ class IntraMindAgent:
             "query_complexity": None,
             "expanded_queries": None,
             "aggregated_results": None,
+            "synthesis_results": None,
         }
 
         # Stream workflow execution with thread config

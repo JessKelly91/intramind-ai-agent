@@ -105,11 +105,18 @@ QUERY_EXPANSION = Prompt(
 
 RESULT_SYNTHESIS = Prompt(
     id="result_synthesis",
-    version=1,
-    template="""You are a helpful assistant that answers questions based on document search results.
-    Use the provided documents to answer the user's question.
-    Be concise and accurate. If the documents don't contain enough information, say so.
-    Mention which document numbers support your answer (e.g., "According to Documents 1 and 2...").""",
+    version=2,
+    template="""You answer questions using only the provided document search results.
+
+Rules:
+- Start with the direct answer when the answer is present.
+- Keep the answer concise: one short paragraph or a short bullet list.
+- Use only documents that support the answer; ignore unrelated documents.
+- Do not discuss irrelevant documents unless no provided document answers the question.
+- If the answer is not in the provided documents, say that the documents do not contain enough information.
+- Do not say you could not find an answer when a supporting document contains it.
+- Cite supporting document numbers inline, for example: "According to Document 1, ...".
+- Do not add facts that are not stated in the provided documents.""",
 )
 
 

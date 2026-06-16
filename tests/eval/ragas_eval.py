@@ -58,7 +58,7 @@ def _load_golden() -> list[dict[str, Any]]:
     return entries
 
 
-async def _seed_corpus(collection: str) -> None:
+async def _seed_corpus(collection: str, redact_fixtures: bool = False) -> None:
     """Ingest the fixture corpus into the eval collection.
 
     Each file in tests/eval/data/corpus/ is ingested as a single document via
@@ -69,6 +69,7 @@ async def _seed_corpus(collection: str) -> None:
     # the agent in environments without dependencies installed.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
     from agent.main import IntraMindAgent  # type: ignore[import]
+    from config import settings  # type: ignore[import]
     from tools.api_client import APIGatewayClient  # type: ignore[import]
 
     async with APIGatewayClient() as client:
@@ -85,17 +86,27 @@ async def _seed_corpus(collection: str) -> None:
 
     agent = IntraMindAgent(thread_id=False)  # disable conversation memory for evals
 
-    for path in sorted(CORPUS_DIR.glob("*.txt")):
-        result = await agent.ingest_document(
-            file_path=str(path),
-            collection_name=collection,
-            document_metadata={"source": path.name, "consent_basis": "fixture"},
-        )
-        if not result.get("success"):
-            raise RuntimeError(f"Failed to ingest {path.name}: {result.get('error')}")
-        logger.info(
-            "Seeded %s (%d chunks)", path.name, result.get("chunks_stored", 0)
-        )
+    previous_pii_redaction = settings.enable_pii_redaction
+    if not redact_fixtures:
+        settings.enable_pii_redaction = False
+        logger.info("Fixture PII redaction disabled for deterministic eval seeding")
+
+    try:
+        for path in sorted(CORPUS_DIR.glob("*.txt")):
+            result = await agent.ingest_document(
+                file_path=str(path),
+                collection_name=collection,
+                document_metadata={"source": path.name, "consent_basis": "fixture"},
+            )
+            if not result.get("success"):
+                raise RuntimeError(
+                    f"Failed to ingest {path.name}: {result.get('error')}"
+                )
+            logger.info(
+                "Seeded %s (%d chunks)", path.name, result.get("chunks_stored", 0)
+            )
+    finally:
+        settings.enable_pii_redaction = previous_pii_redaction
 
 
 def _source_from_result(result: dict[str, Any]) -> str | None:
@@ -207,7 +218,10 @@ async def _run_agent(
             min_score=min_score,
         )
         retrieved_contexts = _retrieved_contexts(result.get("results", []))
-        contexts = [context["content"] for context in retrieved_contexts]
+        synthesis_contexts = _retrieved_contexts(
+            result.get("synthesis_results") or result.get("results", [])
+        )
+        contexts = [context["content"] for context in synthesis_contexts]
         row = {
             "id": entry.get("id", hashlib.sha1(question.encode()).hexdigest()[:8]),
             "question": question,
@@ -216,6 +230,7 @@ async def _run_agent(
             "answer": result.get("response", ""),
             "contexts": contexts,
             "retrieved_contexts": retrieved_contexts,
+            "synthesis_contexts": synthesis_contexts,
             "success": bool(result.get("success")),
         }
         row["retrieval_metrics"] = _row_retrieval_metrics(row)
@@ -524,6 +539,7 @@ def _write_results(
     collection: str,
     num_results: int,
     min_score: float,
+    redact_fixtures: bool,
 ) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     label = os.environ.get("PROMPT_REGISTRY_LABEL", "production")
@@ -540,6 +556,7 @@ def _write_results(
             "prompt_registry_label": label,
             "vectorizer_enabled": os.environ.get("VECTORIZER_ENABLED"),
             "default_vectorizer": os.environ.get("DEFAULT_VECTORIZER"),
+            "fixture_pii_redaction": redact_fixtures,
         },
         # Records which prompt versions produced this baseline so score deltas
         # can be attributed to specific prompt changes.
@@ -566,7 +583,7 @@ async def _gather_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     within ``asyncio.run()`` deadlocks.
     """
     if args.seed:
-        await _seed_corpus(args.collection)
+        await _seed_corpus(args.collection, redact_fixtures=args.redact_fixtures)
 
     entries = _load_golden()
     if not entries:
@@ -606,6 +623,11 @@ def main() -> int:
         help=f"Minimum retrieval score threshold (default {DEFAULT_MIN_SCORE})",
     )
     parser.add_argument(
+        "--redact-fixtures",
+        action="store_true",
+        help="Apply normal PII redaction when seeding eval fixture documents",
+    )
+    parser.add_argument(
         "--log-level", default="INFO", help="Python logging level (default INFO)"
     )
     args = parser.parse_args()
@@ -632,6 +654,7 @@ def main() -> int:
         args.collection,
         args.num_results,
         args.min_score,
+        args.redact_fixtures,
     )
 
     print(f"\nRagas evaluation complete. Results written to: {out_path}")

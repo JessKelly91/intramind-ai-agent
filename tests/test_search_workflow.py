@@ -1,5 +1,6 @@
 """Tests for the search workflow using LangGraph."""
 
+import importlib
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -7,6 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from models.api import SearchResponse, SearchResult
 from models.state import SearchWorkflowState
 from workflows.search_workflow import (
+    _select_synthesis_results,
     classify_query,
     simple_search,
     complex_search,
@@ -16,6 +18,8 @@ from workflows.search_workflow import (
     route_after_search,
     create_search_workflow,
 )
+
+search_workflow_module = importlib.import_module("workflows.search_workflow")
 
 
 # ============================================================================
@@ -426,11 +430,106 @@ async def test_synthesize_results_with_documents():
         result = await synthesize_results(state)
 
         assert result["current_step"] == "synthesize_results"
-        assert result["workflow_complete"] is True
-        assert result["next_step"] is None
+        assert result["workflow_complete"] is False
+        assert result["next_step"] == "safety_check"
         assert result["response"] is not None
         assert "25% growth" in result["response"]
         assert result["citations"] == ["doc1", "doc2"]
+        assert [item["id"] for item in result["synthesis_results"]] == [
+            "doc1",
+            "doc2",
+        ]
+
+
+def test_select_synthesis_results_excludes_low_scoring_distractors(monkeypatch):
+    """Direct factual synthesis should skip obvious distractor contexts."""
+    monkeypatch.setattr(search_workflow_module.settings, "synthesis_max_contexts", 3)
+    monkeypatch.setattr(search_workflow_module.settings, "synthesis_score_gap", 0.12)
+
+    selected = _select_synthesis_results(
+        [
+            {"id": "answer", "score": 0.86},
+            {"id": "close_support", "score": 0.78},
+            {"id": "distractor", "score": 0.55},
+        ],
+        query_complexity="simple",
+    )
+
+    assert [result["id"] for result in selected] == ["answer", "close_support"]
+
+
+def test_select_synthesis_results_keeps_more_context_for_complex_queries(monkeypatch):
+    """Complex synthesis can keep broader context up to the configured cap."""
+    monkeypatch.setattr(search_workflow_module.settings, "synthesis_max_contexts", 3)
+
+    selected = _select_synthesis_results(
+        [
+            {"id": "doc1", "score": 0.90},
+            {"id": "doc2", "score": 0.60},
+            {"id": "doc3", "score": 0.40},
+            {"id": "doc4", "score": 0.20},
+        ],
+        query_complexity="complex",
+    )
+
+    assert [result["id"] for result in selected] == ["doc1", "doc2", "doc3"]
+
+
+@pytest.mark.asyncio
+async def test_synthesize_results_omits_obvious_distractor_context(monkeypatch):
+    """The LLM prompt should only include selected supporting contexts."""
+    monkeypatch.setattr(search_workflow_module.settings, "synthesis_max_contexts", 3)
+    monkeypatch.setattr(search_workflow_module.settings, "synthesis_score_gap", 0.12)
+    state: SearchWorkflowState = {
+        "messages": [HumanMessage(content="revenue")],
+        "user_query": "What was revenue?",
+        "current_step": "simple_search",
+        "next_step": "synthesize_results",
+        "workflow_complete": False,
+        "search_strategy": None,
+        "search_query": None,
+        "search_results": [
+            {
+                "id": "doc1",
+                "content": "Revenue was 12.4 million dollars.",
+                "metadata": {"title": "Revenue Report"},
+                "score": 0.92,
+            },
+            {
+                "id": "doc2",
+                "content": "Unrelated onboarding content.",
+                "metadata": {"title": "Onboarding"},
+                "score": 0.60,
+            },
+        ],
+        "num_results": 10,
+        "min_score": 0.0,
+        "document_path": None,
+        "document_type": None,
+        "extracted_content": None,
+        "document_metadata": {},
+        "response": None,
+        "citations": None,
+        "error": None,
+        "retry_count": 0,
+        "query_complexity": "simple",
+        "expanded_queries": None,
+        "aggregated_results": None,
+    }
+
+    with patch("workflows.search_workflow.get_primary_llm") as mock_llm:
+        mock_response = Mock()
+        mock_response.content = "According to Document 1, revenue was 12.4 million dollars."
+        mock_llm.return_value.ainvoke = AsyncMock(return_value=mock_response)
+
+        result = await synthesize_results(state)
+
+    messages = mock_llm.return_value.ainvoke.call_args.args[0]
+    user_message = messages[-1].content
+    assert "Revenue was 12.4 million dollars." in user_message
+    assert "Unrelated onboarding content." not in user_message
+    assert result["citations"] == ["doc1"]
+    assert [item["id"] for item in result["synthesis_results"]] == ["doc1"]
 
 
 @pytest.mark.asyncio
@@ -462,9 +561,11 @@ async def test_synthesize_results_with_no_documents():
 
     result = await synthesize_results(state)
 
-    assert result["workflow_complete"] is True
+    assert result["workflow_complete"] is False
+    assert result["next_step"] == "safety_check"
     assert result["response"] == "I couldn't find any relevant documents for your query."
     assert result["citations"] == []
+    assert result["synthesis_results"] == []
 
 
 @pytest.mark.asyncio

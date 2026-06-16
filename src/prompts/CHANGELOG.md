@@ -41,6 +41,22 @@ only comparable across runs that used the same judge.
 
 ## `result_synthesis`
 
+### v2 — 2026-06-16 (`c7be25899bcd`)
+- Why: The `llama3.1:8b` baseline showed perfect source retrieval but weak
+  answer quality: verbose answers discussed distractor documents, sometimes
+  contradicted themselves with "I couldn't find..." language, and missed facts
+  near the end of truncated contexts.
+- Change: Tightened synthesis instructions to answer directly, ignore
+  irrelevant documents, avoid unsupported facts, and cite only supporting
+  document numbers. Paired with workflow context selection that sends a smaller
+  selected context set to synthesis.
+- Eval delta (`llama3.1:8b`): faithfulness 0.572 -> 0.722,
+  answer_relevancy 0.624 -> 0.896, context_precision 1.000 -> 1.000,
+  context_recall 0.900 -> 0.772. Retrieval stayed at hit_at_1 1.000,
+  hit_at_3 1.000, mrr 1.000.
+- Baseline: `tests/eval/results/latest.json` before/after v2
+  (`result_synthesis` v1 `33b2e391618f` -> v2 `c7be25899bcd`)
+
 ### v1 — 2026-06-15 (`33b2e391618f`)
 - Why: Initial registry capture (verbatim from `search_workflow.synthesize_results`).
 - Change: None — established the versioned baseline. No behavior change.
